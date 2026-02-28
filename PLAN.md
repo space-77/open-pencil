@@ -1646,11 +1646,13 @@ Tool definitions generated from command schemas (like figma-use's `mcp-tools.jso
 | mcp | @modelcontextprotocol/sdk | @open-pencil/core, @open-pencil/cli |
 | app | — | vue, reka-ui, tailwindcss, @tauri-apps/*, @open-pencil/core |
 
-### Risks
+### Risks — validated
 
-- **CanvasKit WASM in Bun**: should work (WASM support is stable in Bun), but need to verify `MakeSurface` CPU path. Fallback: use Node.js for headless if Bun has issues.
-- **Font loading in headless**: `fonts.ts` currently uses `queryLocalFonts()` (browser API). Headless needs `fs.readFile` for font files or a bundled default font. Start with a single bundled Inter font for headless rendering.
-- **core extraction scope creep**: keep the first extraction mechanical — move files, fix imports, verify tests pass. Don't refactor APIs yet.
+All three risks have been tested and eliminated:
+
+- **CanvasKit WASM in Bun** ✅ — `MakeSurface(100, 100)` creates a CPU surface, renders shapes, produces valid PNG. Zero issues.
+- **Font loading in headless** ✅ — `readFileSync` loads system fonts (e.g. `/System/Library/Fonts/SFNS.ttf`), `FontMgr.FromData()` + `ParagraphBuilder` renders anti-aliased text. For CI (Linux), bundle a default font (Inter or similar).
+- **Core extraction complexity** ✅ Low — engine files have zero DOM imports, no circular deps. Only 2 engine files reference `@/constants` (renderer + fig-export). ~30 import statements in app code need `@/engine/` → `@open-pencil/core`. Mechanical move.
 
 ---
 
