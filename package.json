@@ -26,7 +26,9 @@
     "docs:dev": "bun --filter @open-pencil/docs dev",
     "docs:build": "bun --filter @open-pencil/docs build",
     "docs:preview": "bun --filter @open-pencil/docs preview",
-    "visual-compare": "bun scripts/visual-compare.ts"
+    "visual-compare": "bun scripts/visual-compare.ts",
+    "api": "doc2ts start",
+    "api-git": "doc2ts start --git"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
@@ -46,6 +48,8 @@
     "@unhead/vue": "^2.1.10",
     "@vueuse/core": "^14.2.1",
     "ai": "^6.0.105",
+    "axios": "^1.13.6",
+    "axios-cache-interceptor": "^1.12.0",
     "canvaskit-wasm": "^0.40.0",
     "culori": "^4.0.2",
     "dedent": "^1.7.1",
