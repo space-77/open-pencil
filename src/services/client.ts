@@ -1,19 +1,42 @@
 import qs from "qs";
+import request from '@/api/base'
 import type { IApiClient, DocReqConfig } from "doc2ts";
 
 export default class ApiClient implements IApiClient {
-  request<T = any>(config: DocReqConfig): Promise<T> {
-    // TODO 需自行实现请求逻辑
-    return Promise.reject("需自行实现请求逻辑");
+  request<T = any>(reqConfig: DocReqConfig): Promise<T> {
+    const { config = {}, url: path, method, body, formData, headers } = reqConfig
+
+    return request({ url: path, method, headers, data: body || formData, ...(config || {}) })
   }
 
   async download<T = Blob>(config: DocReqConfig): Promise<T> {
+    const { url: path, method, headers } = config
+
     try {
-      const blob = await this.request(config);
-      // TODO 需自行实现文件下载方法逻辑
-      return Promise.reject("需自行实现请求逻辑");
+      const response = await request({
+        url: path,
+        method,
+        headers,
+        responseType: 'blob'
+      })
+
+      // 响应拦截器对 blob 类型直接返回 axios response
+      const axiosRes = response as any
+
+      // 检查是否是错误响应（拦截器返回的 [err, data, res] 格式）
+      if (Array.isArray(response)) {
+        const [err, data, res] = response
+        if (err) {
+          return [err, null, null] as T
+        }
+        return [null, data, res] as T
+      }
+
+      // 正常的 blob 响应
+      const blob = axiosRes.data as Blob
+      return [null, blob, axiosRes] as T
     } catch (error) {
-      return Promise.reject(error);
+      return [error, null, null] as T
     }
   }
 
