@@ -139,6 +139,17 @@ export default class Documents extends ApiClient {
   }
 
   /**
+   * @param { String } id 文档ID
+   * @summary 设置文档缩略图
+   * @description 上传并设置文档的缩略图
+   */
+  putDocumentsByIdThumbnail(id: string) {
+    const url = `/documents/${id}/thumbnail`;
+    const config: DocReqConfig = { url, method: "put" };
+    return this.request<types.RPutDocumentsByIdThumbnail>(config);
+  }
+
+  /**
    * @summary 恢复文档到指定版本
    * @description 将文档恢复到指定的历史版本
    */
