@@ -7,6 +7,7 @@ import Icons from 'unplugin-icons/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 import Components from 'unplugin-vue-components/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { copyFileSync, existsSync, mkdirSync } from 'fs'
 
 import { automationPlugin } from './src/automation/vite-plugin'
@@ -26,6 +27,10 @@ export default defineConfig(async () => ({
     }
   },
   plugins: [
+    codeInspectorPlugin({
+      bundler: 'vite',
+      editor: 'trae'
+    }),
     {
       name: 'copy-canvaskit-wasm',
       buildStart() {

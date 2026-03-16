@@ -3,13 +3,13 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { Chat } from '@ai-sdk/vue'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { useLocalStorage } from '@vueuse/core'
 import { DirectChatTransport, ToolLoopAgent } from 'ai'
 import dedent from 'dedent'
 import { computed, ref, watch } from 'vue'
 
 import { createAITools } from '@/ai/tools'
 import { useEditorStore } from '@/stores/editor'
+import { useCloudSetting } from './use-cloud-settings'
 import { AI_PROVIDERS, DEFAULT_AI_MODEL, DEFAULT_AI_PROVIDER } from '@open-pencil/core'
 
 import type { AIProviderID } from '@open-pencil/core'
@@ -139,20 +139,20 @@ const SYSTEM_PROMPT = dedent`
   ⚠ Do NOT use \`export_image\` — it is expensive and slow. Use \`describe\` to verify designs instead.
 `
 
-const providerID = useLocalStorage<AIProviderID>(
-  `${STORAGE_PREFIX}ai-provider`,
+const providerID = useCloudSetting<AIProviderID>(
+  'ai-provider',
   DEFAULT_AI_PROVIDER
 )
-const apiKeyStorageKey = computed(() => keyStorageKey(providerID.value))
-const apiKey = useLocalStorage(apiKeyStorageKey, '')
-const modelID = useLocalStorage(`${STORAGE_PREFIX}ai-model`, DEFAULT_AI_MODEL)
-const customBaseURL = useLocalStorage(`${STORAGE_PREFIX}ai-base-url`, '')
-const customModelID = useLocalStorage(`${STORAGE_PREFIX}ai-custom-model`, '')
-const customAPIType = useLocalStorage<'completions' | 'responses'>(
-  `${STORAGE_PREFIX}ai-api-type`,
+const apiKey = useCloudSetting<string>('ai-key:openrouter', '')
+const modelID = useCloudSetting<string>('ai-model', DEFAULT_AI_MODEL)
+const customBaseURL = useCloudSetting<string>('ai-base-url', '')
+const customModelID = useCloudSetting<string>('ai-custom-model', '')
+const customAPIType = useCloudSetting<'completions' | 'responses'>(
+  'ai-api-type',
   'completions'
 )
-const maxOutputTokens = useLocalStorage(`${STORAGE_PREFIX}ai-max-output-tokens`, 16384)
+const maxOutputTokensStr = useCloudSetting<string>('ai-max-output-tokens', '16384')
+const maxOutputTokens = computed(() => parseInt(maxOutputTokensStr.value, 10) || 16384)
 const activeTab = ref<'design' | 'ai'>('design')
 
 const providerDef = computed(

@@ -87,6 +87,7 @@
     "@types/ws": "^8.18.1",
     "@typescript/native-preview": "^7.0.0-dev.20260228.1",
     "@vitejs/plugin-vue": "^6.0.4",
+    "code-inspector-plugin": "^1.4.4",
     "doc2ts": "^1.4.5",
     "esbuild": "^0.27.3",
     "hono": "^4.12.5",

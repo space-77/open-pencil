@@ -1,7 +1,5 @@
-import { useLocalStorage } from '@vueuse/core'
 import { joinRoom as joinTrysteroRoom } from 'trystero/mqtt'
 import { ref, watch, onUnmounted, computed, type InjectionKey, inject } from 'vue'
-import { IndexeddbPersistence } from 'y-indexeddb'
 import * as awarenessProtocol from 'y-protocols/awareness'
 import * as Y from 'yjs'
 
@@ -12,6 +10,8 @@ import {
   ROOM_ID_CHARS,
   YJS_JSON_FIELDS
 } from '@/constants'
+import { collaboration } from '@/services'
+import { useCloudSetting } from './use-cloud-settings'
 
 import type { EditorStore } from '@/stores/editor'
 import type { Color, SceneNode } from '@open-pencil/core'
@@ -34,7 +34,7 @@ export interface CollabState {
 }
 
 export function useCollab(store: EditorStore) {
-  const storedName = useLocalStorage('op-collab-name', '')
+  const storedName = useCloudSetting<string>('collab-name', '')
   const state = ref<CollabState>({
     connected: false,
     roomId: null,
@@ -48,7 +48,8 @@ export function useCollab(store: EditorStore) {
   let ynodes: Y.Map<Y.Map<unknown>> | null = null
   let yimages: Y.Map<Uint8Array> | null = null
   let room: Room | null = null
-  let persistence: IndexeddbPersistence | null = null
+  let cloudRoomId: string | null = null
+  let stateSyncTimer: ReturnType<typeof setInterval> | null = null
   let suppressGraphSync = false
   let suppressYjsEvents = false
   let unbindGraphEvents: (() => void) | null = null
@@ -66,8 +67,13 @@ export function useCollab(store: EditorStore) {
     awareness = new awarenessProtocol.Awareness(ydoc)
     ynodes = ydoc.getMap('nodes')
     yimages = ydoc.getMap('images')
+    cloudRoomId = roomId
 
-    persistence = new IndexeddbPersistence(`op-room-${roomId}`, ydoc)
+    void syncStateFromServer(roomId)
+
+    stateSyncTimer = setInterval(() => {
+      void saveStateToServer()
+    }, 30000)
 
     awareness.on('change', () => {
       updatePeersList()
@@ -240,7 +246,63 @@ export function useCollab(store: EditorStore) {
     }
   }
 
+  async function syncStateFromServer(roomId: string): Promise<boolean> {
+    const [err, result] = await collaboration.getRoomsByIdState(roomId)
+    if (err || !result?.state) return false
+
+    try {
+      const stateBytes = Uint8Array.from(atob(result.state), (c) =>
+        c.charCodeAt(0)
+      )
+      Y.applyUpdate(ydoc!, stateBytes, 'server')
+      return true
+    } catch (e) {
+      console.error('同步状态失败:', e)
+      return false
+    }
+  }
+
+  async function saveStateToServer(): Promise<void> {
+    if (!ydoc || !cloudRoomId) return
+
+    const state = Y.encodeStateAsUpdate(ydoc)
+    const stateVec = Y.encodeStateVector(ydoc)
+
+    const stateBase64 = btoa(String.fromCharCode(...state))
+    const stateVecBase64 = btoa(String.fromCharCode(...stateVec))
+
+    await collaboration.putRoomsByIdState({
+      id: cloudRoomId,
+      state: stateBase64,
+      state_vec: stateVecBase64
+    })
+  }
+
+  async function createCloudRoom(documentId?: string): Promise<string | null> {
+    const [err, result] = await collaboration.postRooms({
+      document_id: documentId,
+      name: `Room ${Date.now()}`,
+      expires_in_hours: 24
+    })
+
+    if (err || !result) {
+      console.error('创建房间失败:', err)
+      return null
+    }
+
+    return result.id ?? null
+  }
+
   function disconnect() {
+    if (cloudRoomId && ydoc) {
+      void saveStateToServer()
+    }
+
+    if (stateSyncTimer) {
+      clearInterval(stateSyncTimer)
+      stateSyncTimer = null
+    }
+
     unbindGraphEvents?.()
     unbindGraphEvents = null
     void room?.leave()
@@ -253,16 +315,13 @@ export function useCollab(store: EditorStore) {
       awareness.destroy()
       awareness = null
     }
-    if (persistence) {
-      void persistence.destroy()
-      persistence = null
-    }
     if (ydoc) {
       ydoc.destroy()
       ydoc = null
     }
     ynodes = null
     yimages = null
+    cloudRoomId = null
     state.value.connected = false
     state.value.roomId = null
     state.value.peers = []
@@ -514,6 +573,7 @@ export function useCollab(store: EditorStore) {
     connect: joinRoom,
     disconnect,
     shareCurrentDoc,
+    createCloudRoom,
     updateCursor,
     updateSelection,
     setLocalName,

@@ -2,7 +2,15 @@ import { onUnmounted } from 'vue'
 
 import { IS_TAURI } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
-import { openFileInNewTab, createTab, closeTab, activeTab } from '@/stores/tabs'
+import {
+  openFileInNewTab,
+  createTab,
+  closeTab,
+  activeTab,
+  openCloudDocumentInNewTab,
+  getActiveStore
+} from '@/stores/tabs'
+import { toast } from '@/composables/use-toast'
 
 export async function openFileDialog() {
   if (IS_TAURI) {
@@ -87,4 +95,39 @@ export function useMenu() {
   })
 
   onUnmounted(() => unlisten?.())
+}
+
+export function useMenuActions() {
+  async function openFromCloud(docId: string) {
+    await openCloudDocumentInNewTab(docId)
+  }
+
+  async function saveToCloud() {
+    const store = getActiveStore()
+    if (store.state.cloudDocumentId) {
+      const success = await store.saveToCloud()
+      if (success) {
+        toast.show('保存成功', 'default')
+      }
+    } else {
+      const docId = await store.createCloudDocument()
+      if (docId) {
+        toast.show('已保存到云端', 'default')
+      }
+    }
+  }
+
+  async function saveAsCloud(name: string) {
+    const store = getActiveStore()
+    const docId = await store.createCloudDocument(name)
+    if (docId) {
+      toast.show('另存为成功', 'default')
+    }
+  }
+
+  return {
+    openFromCloud,
+    saveToCloud,
+    saveAsCloud
+  }
 }

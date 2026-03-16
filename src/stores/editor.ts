@@ -1,6 +1,7 @@
 import { shallowReactive, shallowRef, computed, watch } from 'vue'
 
 import { toast } from '@/composables/use-toast'
+import { documents, images } from '@/services'
 import {
   IS_TAURI,
   DEFAULT_SHAPE_FILL,
@@ -134,11 +135,14 @@ export function createEditorStore() {
   let downloadName: string | null = null
   let savedVersion = 0
   let autosaveTimer: ReturnType<typeof setTimeout> | undefined
+  let cloudAutosaveTimer: ReturnType<typeof setTimeout> | undefined
   let lastWriteTime = 0
   let unwatchFile: (() => void) | null = null
   let _ck: CanvasKit | null = null
   let _renderer: SkiaRenderer | null = null
   let _textEditor: TextEditor | null = null
+  let cloudDocumentId: string | null = null
+  let cloudVersion = 0
 
   void prefetchFigmaSchema()
 
@@ -206,7 +210,12 @@ export function createEditorStore() {
     actionToast: null as string | null,
     mobileDrawerSnap: 'closed' as 'closed' | 'half' | 'full',
     clipboardHtml: '',
-    autosaveEnabled: true
+    autosaveEnabled: true,
+    cloudDocumentId: null as string | null,
+    cloudVersion: 0,
+    cloudSyncEnabled: false,
+    cloudSaving: false,
+    cloudLoading: false
   })
 
   const AUTOSAVE_DELAY = 3000
@@ -682,6 +691,156 @@ export function createEditorStore() {
       state.loading = false
     }
   }
+
+  async function openCloudDocument(docId: string): Promise<boolean> {
+    try {
+      state.loading = true
+      state.cloudLoading = true
+
+      const [err1, docInfo] = await documents.getDocumentsById(docId)
+      if (err1 || !docInfo) {
+        toast.show('获取文档信息失败', 'error')
+        return false
+      }
+
+      const downloadResult = (await documents.getDocumentsByIdDownload(docId)) as unknown as [
+        unknown,
+        Blob | null,
+        unknown
+      ]
+      const err2 = downloadResult[0]
+      const blob = downloadResult[1]
+      if (err2 || !blob) {
+        toast.show('下载文档失败', 'error')
+        return false
+      }
+
+      const file = new File([blob], docInfo.name + '.fig')
+      const imported = await readFigFile(file)
+      graph = imported
+      subscribeToGraph()
+      computeAllLayouts(graph)
+      undo.clear()
+      pageViewports.clear()
+
+      cloudDocumentId = docId
+      state.cloudDocumentId = docId
+      cloudVersion = docInfo.version ?? 1
+      state.cloudVersion = cloudVersion
+      state.cloudSyncEnabled = true
+      state.documentName = docInfo.name ?? 'Untitled'
+      fileHandle = null
+      filePath = null
+      downloadName = null
+      state.selectedIds = new Set()
+
+      const firstPage = graph.getPages()[0] as SceneNode | undefined
+      const pageId = firstPage?.id ?? graph.rootId
+      state.currentPageId = pageId
+      state.panX = 0
+      state.panY = 0
+      state.zoom = 1
+      state.pageColor = { ...CANVAS_BG_COLOR }
+
+      await loadFontsForNodes(graph.getChildren(pageId).map((n) => n.id))
+      requestRender()
+
+      return true
+    } catch (e) {
+      console.error('打开云端文档失败:', e)
+      return false
+    } finally {
+      state.loading = false
+      state.cloudLoading = false
+    }
+  }
+
+  async function saveToCloud(): Promise<boolean> {
+    if (!cloudDocumentId) return false
+
+    try {
+      state.cloudSaving = true
+
+      const figData = await buildFigFile()
+      const file = new File([figData], state.documentName + '.fig')
+
+      const [err, result] = await documents.putDocumentsByIdContent({
+        id: cloudDocumentId,
+        file,
+        version: cloudVersion
+      })
+
+      if (err) {
+        if ((err as { code?: number }).code === 409) {
+          toast.show('文档已被其他用户修改，请刷新后重试', 'error')
+        } else {
+          toast.show(
+            '保存失败: ' + ((err as { msg?: string }).msg ?? '未知错误'),
+            'error'
+          )
+        }
+        return false
+      }
+
+      cloudVersion = result?.version ?? cloudVersion + 1
+      state.cloudVersion = cloudVersion
+      savedVersion = state.sceneVersion
+
+      return true
+    } catch (e) {
+      console.error('保存到云端失败:', e)
+      return false
+    } finally {
+      state.cloudSaving = false
+    }
+  }
+
+  async function createCloudDocument(name?: string): Promise<string | null> {
+    try {
+      const figData = await buildFigFile()
+      const file = new File([figData], (name || state.documentName) + '.fig')
+
+      const [err, result] = await documents.postDocuments({
+        name: name || state.documentName,
+        file,
+        is_public: false
+      })
+
+      if (err || !result) {
+        toast.show('创建文档失败', 'error')
+        return null
+      }
+
+      cloudDocumentId = result.id ?? null
+      state.cloudDocumentId = cloudDocumentId
+      cloudVersion = result.version ?? 1
+      state.cloudVersion = cloudVersion
+      state.cloudSyncEnabled = true
+      state.documentName = result.name ?? state.documentName
+
+      return cloudDocumentId
+    } catch (e) {
+      console.error('创建云端文档失败:', e)
+      return null
+    }
+  }
+
+  const CLOUD_AUTOSAVE_DELAY = 5000
+
+  watch(
+    () => state.sceneVersion,
+    (version) => {
+      if (version === savedVersion) return
+      if (!state.cloudSyncEnabled) return
+      if (!cloudDocumentId) return
+
+      clearTimeout(cloudAutosaveTimer)
+      cloudAutosaveTimer = setTimeout(async () => {
+        if (state.sceneVersion === savedVersion) return
+        await saveToCloud()
+      }, CLOUD_AUTOSAVE_DELAY)
+    }
+  )
 
   function setCanvasKit(ck: CanvasKit, renderer: SkiaRenderer) {
     _ck = ck
@@ -1708,6 +1867,42 @@ export function createEditorStore() {
   const IMAGE_MAX_DIMENSION = 4096
   const IMAGE_GAP = 20
 
+  async function uploadImageToCloud(
+    bytes: Uint8Array,
+    documentId?: string
+  ): Promise<string | null> {
+    const file = new File([bytes], 'image.png', { type: 'image/png' })
+
+    const [err, result] = await images.postImages({
+      file,
+      document_id: documentId ?? state.cloudDocumentId ?? undefined
+    })
+
+    if (err || !result?.hash) {
+      console.error('上传图片失败:', err)
+      return null
+    }
+
+    return result.hash
+  }
+
+  async function syncImagesToCloud(): Promise<void> {
+    const localHashes = Array.from(graph.images.keys())
+
+    if (localHashes.length === 0) return
+
+    const [err, result] = await images.postImagesCheck(localHashes)
+
+    if (err || !result?.missing) return
+
+    for (const hash of result.missing) {
+      const data = graph.images.get(hash)
+      if (data) {
+        await uploadImageToCloud(data)
+      }
+    }
+  }
+
   async function placeImageFiles(files: File[], cx: number, cy: number) {
     if (!_ck) return
 
@@ -1718,6 +1913,12 @@ export function createEditorStore() {
       if (dims) prepared.push({ bytes, name: file.name, ...dims })
     }
     if (!prepared.length) return
+
+    if (state.cloudSyncEnabled) {
+      for (const p of prepared) {
+        await uploadImageToCloud(p.bytes)
+      }
+    }
 
     let totalW = 0
     for (const p of prepared) totalW += p.w
@@ -2484,7 +2685,12 @@ export function createEditorStore() {
     switchPage,
     addPage,
     deletePage,
-    renamePage
+    renamePage,
+    openCloudDocument,
+    saveToCloud,
+    createCloudDocument,
+    uploadImageToCloud,
+    syncImagesToCloud
   }
 }
 

@@ -7,6 +7,7 @@ import type { EditorStore } from './editor'
 export interface Tab {
   id: string
   store: EditorStore
+  cloudDocumentId?: string
 }
 
 let nextTabId = 1
@@ -90,6 +91,24 @@ export async function openFileInNewTab(
   }
 }
 
+export async function openCloudDocumentInNewTab(docId: string): Promise<void> {
+  const current = activeTab.value
+  const isUntouched =
+    current?.store.state.documentName === 'Untitled' &&
+    !current.store.undo.canUndo &&
+    !current.store.state.cloudDocumentId
+
+  if (isUntouched) {
+    await current.store.openCloudDocument(docId)
+    current.cloudDocumentId = docId
+  } else {
+    const store = createEditorStore()
+    const tab = createTab(store)
+    tab.cloudDocumentId = docId
+    await store.openCloudDocument(docId)
+  }
+}
+
 export function tabCount(): number {
   return tabsRef.value.length
 }
@@ -102,6 +121,7 @@ export function useTabsStore() {
     switchTab,
     closeTab,
     openFileInNewTab,
+    openCloudDocumentInNewTab,
     getActiveStore,
     tabCount
   }
