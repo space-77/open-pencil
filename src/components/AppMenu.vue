@@ -23,6 +23,8 @@ import { menuContent, menuItem, menuSeparator } from '@/components/ui/menu'
 import { IS_TAURI } from '@/constants'
 import { openFileDialog } from '@/composables/use-menu'
 import { useEditorStore } from '@/stores/editor'
+import { documents } from '@/services'
+import { toast } from '@/composables/use-toast'
 
 const store = useEditorStore()
 
@@ -31,6 +33,7 @@ const rename = useInlineRename<'document-name'>((_id, name) => {
   store.state.documentName = name
 })
 const editingName = computed(() => rename.editingId.value === DOCUMENT_NAME_ID)
+const renaming = ref(false)
 
 function setNameInputRef(el: HTMLInputElement | null) {
   if (el) void rename.focusInput(el)
@@ -40,8 +43,34 @@ function startRename() {
   rename.start(DOCUMENT_NAME_ID, store.state.documentName)
 }
 
-function commitRename(input: HTMLInputElement) {
-  rename.commit(DOCUMENT_NAME_ID, input)
+async function commitRename(input: HTMLInputElement) {
+  const newName = input.value.trim()
+  if (!newName || newName === store.state.documentName) {
+    rename.commit(DOCUMENT_NAME_ID, input)
+    return
+  }
+  const docId = store.state.cloudDocumentId
+  if (!docId) {
+    rename.commit(DOCUMENT_NAME_ID, input)
+    return
+  }
+  renaming.value = true
+  try {
+    const [err] = await documents.putDocumentsByIdRename({ id: docId, name: newName })
+    if (err) {
+      toast.error('重命名失败')
+      input.value = store.state.documentName
+    } else {
+      store.state.documentName = newName
+      toast.success('重命名成功')
+    }
+  } catch {
+    toast.error('重命名失败')
+    input.value = store.state.documentName
+  } finally {
+    renaming.value = false
+    rename.commit(DOCUMENT_NAME_ID, input)
+  }
 }
 
 const isMac = navigator.platform.includes('Mac')
