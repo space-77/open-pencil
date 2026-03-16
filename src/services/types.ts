@@ -533,6 +533,11 @@ export namespace __common__ {
        */
       owner_id?: string;
       /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
+      /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
        */
@@ -599,6 +604,11 @@ export namespace __common__ {
        * @description 所有者ID
        */
       owner_id?: string;
+      /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
       /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
@@ -685,6 +695,11 @@ export namespace __common__ {
        */
       owner_id?: string;
       /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
+      /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
        */
@@ -751,6 +766,11 @@ export namespace __common__ {
        * @description 所有者ID
        */
       owner_id?: string;
+      /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
       /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
@@ -855,6 +875,11 @@ export namespace __common__ {
        */
       owner_id?: string;
       /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
+      /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
        */
@@ -930,6 +955,11 @@ export namespace __common__ {
        */
       owner_id?: string;
       /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
+      /**
        * @example 2024-01-01T00:00:00Z
        * @description 更新时间
        */
@@ -942,6 +972,78 @@ export namespace __common__ {
     };
     /**
      * @example 改名成功
+     * @description 提示消息
+     */
+    msg?: string;
+  }
+
+  export interface InternalhandlerSetThumbnailResponse {
+    /**
+     * @example 200
+     * @description 状态码
+     */
+    code?: number;
+    /**
+     * @description 文档数据
+     */
+    data?: {
+      /**
+       * @example 2024-01-01T00:00:00Z
+       * @description 创建时间
+       */
+      created_at?: string;
+      /**
+       * @example A sample design document
+       * @description 文档描述
+       */
+      description?: string;
+      /**
+       * @example sha256:abc123...
+       * @description 文件哈希值
+       */
+      file_hash?: string;
+      /**
+       * @example 102400
+       * @description 文件大小（字节）
+       */
+      file_size?: number;
+      /**
+       * @example doc_abc123
+       * @description 文档ID
+       */
+      id?: string;
+      /**
+       * @description 是否公开
+       */
+      is_public?: boolean;
+      /**
+       * @example My Design
+       * @description 文档名称
+       */
+      name?: string;
+      /**
+       * @example usr_abc123
+       * @description 所有者ID
+       */
+      owner_id?: string;
+      /**
+       * @example thumbnails/doc_abc123
+       * @description 缩略图路径
+       */
+      thumbnail_path?: string;
+      /**
+       * @example 2024-01-01T00:00:00Z
+       * @description 更新时间
+       */
+      updated_at?: string;
+      /**
+       * @example 1
+       * @description 文档版本号
+       */
+      version?: number;
+    };
+    /**
+     * @example 设置成功
      * @description 提示消息
      */
     msg?: string;
@@ -1318,6 +1420,11 @@ export namespace __common__ {
      * @description 所有者ID
      */
     owner_id?: string;
+    /**
+     * @example thumbnails/doc_abc123
+     * @description 缩略图路径
+     */
+    thumbnail_path?: string;
     /**
      * @example 2024-01-01T00:00:00Z
      * @description 更新时间
@@ -2000,6 +2107,22 @@ export namespace Documents {
   export interface PutDocumentsByIdRenameBody
     extends __common__.InternalhandlerRenameDocumentRequest {}
 
+  export interface PutDocumentsByIdThumbnailRes
+    extends __common__.InternalhandlerSetThumbnailResponse {}
+
+  export interface PutDocumentsByIdThumbnailParams {
+    /**
+     * @example "doc_abc123"
+     * @description 文档ID
+     */
+    id: string;
+  }
+
+  /**
+   * @description 缩略图文件
+   */
+  export interface PutDocumentsByIdThumbnailBody {}
+
   export interface GetDocumentsByIdVersionsRes
     extends __common__.InternalhandlerVersionListResponse {}
 
@@ -2100,6 +2223,13 @@ export namespace Documents {
       any,
       __common__.InternalhandlerVersionListResponse["data"],
       __common__.InternalhandlerVersionListResponse
+    ]
+  >;
+  export type RPutDocumentsByIdThumbnail = Promise<
+    [
+      any,
+      __common__.InternalhandlerSetThumbnailResponse["data"],
+      __common__.InternalhandlerSetThumbnailResponse
     ]
   >;
   export type RPostDocumentsByIdVersionsByVersionRestore = Promise<
