@@ -25,7 +25,8 @@ export const allTabs = computed(() =>
   tabsRef.value.map((t) => ({
     id: t.id,
     name: t.store.state.documentName,
-    isActive: t.id === activeTabId.value
+    isActive: t.id === activeTabId.value,
+    cloudDocumentId: t.cloudDocumentId
   }))
 )
 

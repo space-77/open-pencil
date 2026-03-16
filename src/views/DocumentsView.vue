@@ -2,6 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogRoot,
+  AlertDialogTitle,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
@@ -17,6 +24,7 @@ import { uiButton } from '@/components/ui/button'
 import { panelSurface } from '@/components/ui/surface'
 import { menuContent, menuItem, menuSeparator } from '@/components/ui/menu'
 import { toast } from '@/composables/use-toast'
+import dayjs from 'dayjs'
 
 type Document = __common__.InternalhandlerDocumentResponse
 
@@ -38,6 +46,10 @@ const searchQuery = ref('')
 const creating = ref(false)
 const sortBy = ref<'updated_at' | 'created_at' | 'name'>('updated_at')
 const sortOrder = ref<'asc' | 'desc'>('desc')
+
+const renameDialogOpen = ref(false)
+const renamingDoc = ref<Document | null>(null)
+const newName = ref('')
 
 const filteredDocs = computed(() => {
   let result = [...docs.value]
@@ -106,6 +118,35 @@ function openDocument(id: string) {
   router.push(`/${id}`)
 }
 
+function openRenameDialog(doc: Document) {
+  renamingDoc.value = doc
+  newName.value = doc.name || ''
+  renameDialogOpen.value = true
+}
+
+async function confirmRename() {
+  if (!renamingDoc.value?.id || !newName.value.trim()) return
+  const docId = renamingDoc.value.id
+  try {
+    const [err] = await documents.putDocumentsByIdRename({
+      id: docId,
+      name: newName.value.trim()
+    })
+    if (err) {
+      toast.error('重命名失败')
+      return
+    }
+    const doc = docs.value.find((d) => d.id === docId)
+    if (doc) doc.name = newName.value.trim()
+    toast.success('重命名成功')
+  } catch {
+    toast.error('重命名失败')
+  } finally {
+    renameDialogOpen.value = false
+    renamingDoc.value = null
+  }
+}
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -113,10 +154,10 @@ function formatDate(dateStr?: string) {
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
-  if (days === 0) return '今天'
-  if (days === 1) return '昨天'
-  if (days < 7) return `${days} 天前`
-  return date.toLocaleDateString('zh-CN')
+  if (days === 0) return `今天 ${dayjs(date).format('HH:mm')}`
+  if (days === 1) return `昨天 ${dayjs(date).format('HH:mm')}`
+  if (days < 7) return `${days} 天前 ${dayjs(date).format('HH:mm')}`
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 function handleLogout() {
@@ -232,6 +273,10 @@ function handleLogout() {
                         <icon-lucide-external-link class="mr-2 size-4" />
                         打开
                       </DropdownMenuItem>
+                      <DropdownMenuItem :class="menuItem()" @select="openRenameDialog(doc)">
+                        <icon-lucide-pencil class="mr-2 size-4" />
+                        重命名
+                      </DropdownMenuItem>
                       <div :class="menuSeparator()" />
                       <DropdownMenuItem
                         :class="menuItem({ class: 'text-red-400 focus:text-red-400' })"
@@ -250,5 +295,38 @@ function handleLogout() {
         </div>
       </div>
     </main>
+
+    <AlertDialogRoot v-model:open="renameDialogOpen">
+      <AlertDialogPortal>
+        <AlertDialogOverlay class="fixed inset-0 z-50 bg-black/50" />
+        <AlertDialogContent
+          class="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-panel p-4 shadow-xl"
+          @escape-key-down="renameDialogOpen = false"
+        >
+          <AlertDialogTitle class="text-sm font-semibold text-surface">重命名文档</AlertDialogTitle>
+          <input
+            v-model="newName"
+            type="text"
+            :class="uiInput({ class: 'mt-3 w-full' })"
+            placeholder="输入文档名称"
+            @keyup.enter="confirmRename"
+          />
+          <div class="mt-4 flex justify-end gap-2">
+            <AlertDialogCancel
+              :class="uiButton({ tone: 'ghost', size: 'sm' })"
+              @click="renameDialogOpen = false"
+            >
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              :class="uiButton({ size: 'sm' })"
+              @click="confirmRename"
+            >
+              确认
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialogPortal>
+    </AlertDialogRoot>
   </div>
 </template>

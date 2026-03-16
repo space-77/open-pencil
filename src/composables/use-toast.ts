@@ -19,6 +19,14 @@ function show(message: string, variant: ToastVariant = 'default') {
   toasts.value.push({ id: ++nextId, message, variant })
 }
 
+function error(message: string) {
+  show(message, 'error')
+}
+
+function success(message: string) {
+  show(message, 'default')
+}
+
 function remove(id: number) {
   toasts.value = toasts.value.filter((t) => t.id !== id)
 }
@@ -36,4 +44,4 @@ function setupGlobalErrorHandler() {
   })
 }
 
-export const toast = { show, remove, toasts, setupGlobalErrorHandler, TOAST_DURATION }
+export const toast = { show, error, success, remove, toasts, setupGlobalErrorHandler, TOAST_DURATION }

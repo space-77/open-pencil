@@ -1,15 +1,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 
 import { useTabsStore, createTab } from '@/stores/tabs'
+import { documents } from '@/services/documents'
+
+const router = useRouter()
+const route = useRoute()
 
 const { tabs, activeTabId, switchTab, closeTab } = useTabsStore()
 
 const modelValue = computed({
   get: () => activeTabId.value,
-  set: (id: string) => switchTab(id)
+  set: (id: string) => {
+    switchTab(id)
+    const tab = tabs.value.find((t) => t.id === id)
+    const docId = tab?.cloudDocumentId
+    if (docId && route.params.docId !== docId) {
+      router.replace({ params: { docId } })
+    } else if (!docId && route.params.docId) {
+      router.replace({ params: { docId: undefined } })
+    }
+  }
 })
+
+async function onNewTab() {
+  const [err, data] = await documents.postDocuments({ name: 'Untitled' })
+  if (err || !data?.data?.id) {
+    console.error('Failed to create document:', err)
+    return
+  }
+  const docId = data.data.id
+  const tab = createTab()
+  tab.cloudDocumentId = docId
+  router.replace({ params: { docId } })
+}
 
 function onMiddleClick(e: MouseEvent, tabId: string) {
   if (e.button === 1) {
@@ -60,7 +86,7 @@ function onClose(e: MouseEvent, tabId: string) {
       class="flex size-9 shrink-0 cursor-pointer items-center justify-center text-muted transition-colors hover:text-surface"
       title="New tab"
       aria-label="New tab"
-      @click="createTab()"
+      @click="onNewTab()"
     >
       <icon-lucide-plus class="size-3.5" />
     </button>
