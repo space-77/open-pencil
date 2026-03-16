@@ -17,7 +17,7 @@ const SETTING_KEYS = [
   'ai-max-output-tokens',
   'collab-name',
   'pexels-api-key',
-  'unsplash-access-key',
+  'unsplash-access-key'
 ] as const
 
 type SettingKey = (typeof SETTING_KEYS)[number]
@@ -85,12 +85,10 @@ export function useCloudSetting<T extends string = string>(
 async function flushPendingWrites(): Promise<void> {
   if (pendingWrites.size === 0) return
 
-  const settingsToWrite = Array.from(pendingWrites.entries()).map(
-    ([key, val]) => ({
-      key,
-      value: val
-    })
-  )
+  const settingsToWrite = Array.from(pendingWrites.entries()).map(([key, val]) => ({
+    key,
+    value: val
+  }))
 
   pendingWrites.clear()
 
@@ -101,9 +99,7 @@ async function flushPendingWrites(): Promise<void> {
   }
 }
 
-export async function getCloudSettings(
-  keys: SettingKey[]
-): Promise<Record<string, string>> {
+export async function getCloudSettings(keys: SettingKey[]): Promise<Record<string, string>> {
   await initSettings()
 
   const result: Record<string, string> = {}

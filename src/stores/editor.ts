@@ -1,7 +1,6 @@
 import { shallowReactive, shallowRef, computed, watch } from 'vue'
 
 import { toast } from '@/composables/use-toast'
-import { documents, images } from '@/services'
 import {
   IS_TAURI,
   DEFAULT_SHAPE_FILL,
@@ -14,6 +13,7 @@ import {
   ZOOM_SCALE_MAX
 } from '@/constants'
 import { loadFont } from '@/engine/fonts'
+import { documents, images } from '@/services'
 import {
   collectFontKeys,
   computeLayout,
@@ -740,7 +740,10 @@ export function createEditorStore() {
         return false
       }
 
-      const imported = blob.size === 0 ? new SceneGraph() : await readFigFile(new File([blob], `${docInfo.name}.fig`))
+      const imported =
+        blob.size === 0
+          ? new SceneGraph()
+          : await readFigFile(new File([blob], `${docInfo.name}.fig`))
       graph = imported
       subscribeToGraph()
       computeAllLayouts(graph)
@@ -798,10 +801,7 @@ export function createEditorStore() {
         if ((err as { code?: number }).code === 409) {
           toast.show('文档已被其他用户修改，请刷新后重试', 'error')
         } else {
-          toast.show(
-            '保存失败: ' + ((err as { msg?: string }).msg ?? '未知错误'),
-            'error'
-          )
+          toast.show('保存失败: ' + ((err as { msg?: string }).msg ?? '未知错误'), 'error')
         }
         return false
       }

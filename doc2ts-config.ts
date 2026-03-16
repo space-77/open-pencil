@@ -3,7 +3,7 @@ import type { Doc2TsConfig } from "doc2ts";
 const doc2tsConfig: Doc2TsConfig = {
   outDir: "./src/services",
   origins: [{ url: "http://localhost:8180/swagger/doc.json" }],
-  postRender: 'npm run lint:fix',
+  postRender: 'bun run format',
   languageType: "typeScript",
   baseClassName: "ApiClient",
   baseClassPath: "./src/services/client.ts",

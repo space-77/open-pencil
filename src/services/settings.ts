@@ -7,9 +7,10 @@
  * ---------------------------------------------------------------
  */
 
-import type { DocReqConfig } from "doc2ts";
-import ApiClient from "./client";
-import type { Settings as types, __common__ } from "./types";
+import ApiClient from './client'
+
+import type { Settings as types, __common__ } from './types'
+import type { DocReqConfig } from 'doc2ts'
 /**
  * @name Settings
  * @description Settings
@@ -20,24 +21,22 @@ export default class Settings extends ApiClient {
    * @description 获取当前用户的所有配置设置项
    */
   getSettings() {
-    const config: DocReqConfig = { url: "/settings", method: "get" };
-    return this.request<types.RGetSettings>(config);
+    const config: DocReqConfig = { url: '/settings', method: 'get' }
+    return this.request<types.RGetSettings>(config)
   }
 
   /**
    * @summary 批量设置
    * @description 批量设置多个配置项
    */
-  putSettingsBatch(
-    settings: __common__.InternalhandlerBatchSetRequest["settings"]
-  ) {
-    const body = { settings };
+  putSettingsBatch(settings: __common__.InternalhandlerBatchSetRequest['settings']) {
+    const body = { settings }
     const config: DocReqConfig = {
-      url: "/settings/batch",
+      url: '/settings/batch',
       body,
-      method: "put",
-    };
-    return this.request<types.RPutSettingsBatch>(config);
+      method: 'put'
+    }
+    return this.request<types.RPutSettingsBatch>(config)
   }
 
   /**
@@ -46,8 +45,8 @@ export default class Settings extends ApiClient {
    * @description 根据key获取指定的配置项
    */
   getSettingsByKey(key: string) {
-    const config: DocReqConfig = { url: `/settings/${key}`, method: "get" };
-    return this.request<types.RGetSettingsByKey>(config);
+    const config: DocReqConfig = { url: `/settings/${key}`, method: 'get' }
+    return this.request<types.RGetSettingsByKey>(config)
   }
 
   /**
@@ -55,13 +54,13 @@ export default class Settings extends ApiClient {
    * @description 设置或更新指定配置项的值
    */
   putSettingsByKey(params: types.PutSettingsByKeyParams1) {
-    const { key, ...body } = params;
+    const { key, ...body } = params
     const config: DocReqConfig = {
       url: `/settings/${key}`,
       body,
-      method: "put",
-    };
-    return this.request<types.RPutSettingsByKey>(config);
+      method: 'put'
+    }
+    return this.request<types.RPutSettingsByKey>(config)
   }
 
   /**
@@ -70,8 +69,8 @@ export default class Settings extends ApiClient {
    * @description 删除指定的配置项
    */
   deleteSettingsByKey(key: string) {
-    const config: DocReqConfig = { url: `/settings/${key}`, method: "delete" };
-    return this.request<types.RDeleteSettingsByKey>(config);
+    const config: DocReqConfig = { url: `/settings/${key}`, method: 'delete' }
+    return this.request<types.RDeleteSettingsByKey>(config)
   }
 }
-export const settings = new Settings();
+export const settings = new Settings()

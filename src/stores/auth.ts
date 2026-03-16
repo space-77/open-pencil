@@ -1,7 +1,9 @@
 import { ref, computed, readonly } from 'vue'
+
 import { auth } from '@/services'
-import type { __common__ } from '@/services/types'
 import { getToken, setToken, removeToken as removeStoredToken } from '@/utils/auth'
+
+import type { __common__ } from '@/services/types'
 
 type User = __common__.InternalhandlerUserResponse
 

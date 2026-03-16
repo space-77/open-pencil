@@ -11,6 +11,7 @@ import {
   YJS_JSON_FIELDS
 } from '@/constants'
 import { collaboration } from '@/services'
+
 import { useCloudSetting } from './use-cloud-settings'
 
 import type { EditorStore } from '@/stores/editor'
@@ -252,9 +253,7 @@ export function useCollab(store: EditorStore) {
     if (err || !result?.state) return false
 
     try {
-      const stateBytes = Uint8Array.from(atob(result.state), (c) =>
-        c.charCodeAt(0)
-      )
+      const stateBytes = Uint8Array.from(atob(result.state), (c) => c.charCodeAt(0))
       Y.applyUpdate(ydoc!, stateBytes, 'server')
       return true
     } catch (e) {

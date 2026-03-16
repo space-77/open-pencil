@@ -85,32 +85,17 @@ function switchMode(newMode: 'login' | 'register') {
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <div v-if="!isLogin" class="space-y-1">
           <label class="text-xs text-muted">昵称 (可选)</label>
-          <input
-            v-model="name"
-            type="text"
-            placeholder="输入昵称"
-            :class="uiInput()"
-          />
+          <input v-model="name" type="text" placeholder="输入昵称" :class="uiInput()" />
         </div>
 
         <div class="space-y-1">
           <label class="text-xs text-muted">邮箱</label>
-          <input
-            v-model="email"
-            type="email"
-            placeholder="输入邮箱地址"
-            :class="uiInput()"
-          />
+          <input v-model="email" type="email" placeholder="输入邮箱地址" :class="uiInput()" />
         </div>
 
         <div class="space-y-1">
           <label class="text-xs text-muted">密码</label>
-          <input
-            v-model="password"
-            type="password"
-            placeholder="输入密码"
-            :class="uiInput()"
-          />
+          <input v-model="password" type="password" placeholder="输入密码" :class="uiInput()" />
         </div>
 
         <div v-if="!isLogin" class="space-y-1">
@@ -121,15 +106,15 @@ function switchMode(newMode: 'login' | 'register') {
             placeholder="再次输入密码"
             :class="uiInput()"
           />
-          <p
-            v-if="confirmPassword && password !== confirmPassword"
-            class="text-xs text-red-400"
-          >
+          <p v-if="confirmPassword && password !== confirmPassword" class="text-xs text-red-400">
             密码不一致
           </p>
         </div>
 
-        <div v-if="authStore.error.value" class="rounded bg-red-500/10 px-3 py-2 text-xs text-red-400">
+        <div
+          v-if="authStore.error.value"
+          class="rounded bg-red-500/10 px-3 py-2 text-xs text-red-400"
+        >
           {{ authStore.error.value }}
         </div>
 

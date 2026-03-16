@@ -50,6 +50,8 @@ const sortOrder = ref<'asc' | 'desc'>('desc')
 const renameDialogOpen = ref(false)
 const renamingDoc = ref<Document | null>(null)
 const newName = ref('')
+const newDescription = ref('')
+const newIsPublic = ref(false)
 
 const filteredDocs = computed(() => {
   let result = [...docs.value]
@@ -69,7 +71,10 @@ const filteredDocs = computed(() => {
 async function fetchDocuments() {
   loading.value = true
   try {
-    const [err, data] = await documents.getDocuments({ sort_by: sortBy.value, sort_order: sortOrder.value })
+    const [err, data] = await documents.getDocuments({
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value
+    })
     if (err) {
       toast.error('加载文档失败')
       return
@@ -121,6 +126,8 @@ function openDocument(id: string) {
 function openRenameDialog(doc: Document) {
   renamingDoc.value = doc
   newName.value = doc.name || ''
+  newDescription.value = doc.description || ''
+  newIsPublic.value = doc.is_public ?? false
   renameDialogOpen.value = true
 }
 
@@ -128,19 +135,25 @@ async function confirmRename() {
   if (!renamingDoc.value?.id || !newName.value.trim()) return
   const docId = renamingDoc.value.id
   try {
-    const [err] = await documents.putDocumentsByIdRename({
+    const [err] = await documents.putDocumentsById({
       id: docId,
-      name: newName.value.trim()
+      name: newName.value.trim(),
+      description: newDescription.value.trim() || undefined,
+      is_public: newIsPublic.value
     })
     if (err) {
-      toast.error('重命名失败')
+      toast.error('保存失败')
       return
     }
     const doc = docs.value.find((d) => d.id === docId)
-    if (doc) doc.name = newName.value.trim()
-    toast.success('重命名成功')
+    if (doc) {
+      doc.name = newName.value.trim()
+      doc.description = newDescription.value.trim() || undefined
+      doc.is_public = newIsPublic.value
+    }
+    toast.success('保存成功')
   } catch {
-    toast.error('重命名失败')
+    toast.error('保存失败')
   } finally {
     renameDialogOpen.value = false
     renamingDoc.value = null
@@ -188,18 +201,26 @@ function handleLogout() {
         <div class="mb-6 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="relative">
-              <icon-lucide-search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+              <icon-lucide-search
+                class="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted"
+              />
               <input
                 v-model="searchQuery"
                 type="text"
                 placeholder="搜索文档..."
-                :class="uiInput({ class: 'pl-8 w-64' })"
+                :class="uiInput({ class: 'w-64 pl-8' })"
               />
             </div>
             <DropdownMenuRoot>
               <DropdownMenuTrigger :class="uiButton({ tone: 'ghost', size: 'sm' })">
                 <icon-lucide-arrow-up-down class="size-4" />
-                <span class="ml-1">{{ sortBy === 'updated_at' ? '最近修改' : sortBy === 'created_at' ? '创建时间' : '名称' }}</span>
+                <span class="ml-1">{{
+                  sortBy === 'updated_at'
+                    ? '最近修改'
+                    : sortBy === 'created_at'
+                      ? '创建时间'
+                      : '名称'
+                }}</span>
               </DropdownMenuTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuContent :class="menuContent()" align="start">
@@ -233,7 +254,10 @@ function handleLogout() {
           <icon-lucide-loader-2 class="size-6 animate-spin text-muted" />
         </div>
 
-        <div v-else-if="filteredDocs.length === 0" class="flex flex-col items-center justify-center py-12 text-muted">
+        <div
+          v-else-if="filteredDocs.length === 0"
+          class="flex flex-col items-center justify-center py-12 text-muted"
+        >
           <icon-lucide-file-x class="mb-2 size-12" />
           <p class="text-sm">{{ searchQuery ? '未找到匹配的文档' : '暂无文档' }}</p>
           <button
@@ -249,7 +273,13 @@ function handleLogout() {
           <div
             v-for="doc in filteredDocs"
             :key="doc.id"
-            :class="panelSurface({ elevation: 'md', padding: 'none', class: 'group cursor-pointer transition-shadow hover:shadow-lg' })"
+            :class="
+              panelSurface({
+                elevation: 'md',
+                padding: 'none',
+                class: 'group cursor-pointer transition-shadow hover:shadow-lg'
+              })
+            "
             @click="openDocument(doc.id!)"
           >
             <div class="aspect-[4/3] bg-input/50">
@@ -259,10 +289,18 @@ function handleLogout() {
             </div>
             <div class="p-3">
               <div class="flex items-start justify-between gap-2">
-                <h3 class="truncate text-sm font-medium text-surface">{{ doc.name || '未命名' }}</h3>
+                <h3 class="truncate text-sm font-medium text-surface">
+                  {{ doc.name || '未命名' }}
+                </h3>
                 <DropdownMenuRoot>
                   <DropdownMenuTrigger
-                    :class="uiButton({ tone: 'ghost', size: 'iconSm', class: 'opacity-0 group-hover:opacity-100' })"
+                    :class="
+                      uiButton({
+                        tone: 'ghost',
+                        size: 'iconSm',
+                        class: 'opacity-0 group-hover:opacity-100'
+                      })
+                    "
                     @click.stop
                   >
                     <icon-lucide-more-horizontal class="size-4" />
@@ -274,8 +312,8 @@ function handleLogout() {
                         打开
                       </DropdownMenuItem>
                       <DropdownMenuItem :class="menuItem()" @select="openRenameDialog(doc)">
-                        <icon-lucide-pencil class="mr-2 size-4" />
-                        重命名
+                        <icon-lucide-settings class="mr-2 size-4" />
+                        编辑
                       </DropdownMenuItem>
                       <div :class="menuSeparator()" />
                       <DropdownMenuItem
@@ -300,17 +338,48 @@ function handleLogout() {
       <AlertDialogPortal>
         <AlertDialogOverlay class="fixed inset-0 z-50 bg-black/50" />
         <AlertDialogContent
-          class="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-panel p-4 shadow-xl"
+          class="fixed top-1/2 left-1/2 z-50 w-96 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-panel p-4 shadow-xl"
           @escape-key-down="renameDialogOpen = false"
         >
-          <AlertDialogTitle class="text-sm font-semibold text-surface">重命名文档</AlertDialogTitle>
-          <input
-            v-model="newName"
-            type="text"
-            :class="uiInput({ class: 'mt-3 w-full' })"
-            placeholder="输入文档名称"
-            @keyup.enter="confirmRename"
-          />
+          <AlertDialogTitle class="text-sm font-semibold text-surface">编辑文档</AlertDialogTitle>
+          <div class="mt-3 space-y-3">
+            <div>
+              <label class="mb-1 block text-xs text-muted">名称</label>
+              <input
+                v-model="newName"
+                type="text"
+                :class="uiInput({ class: 'w-full' })"
+                placeholder="输入文档名称"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-xs text-muted">描述</label>
+              <textarea
+                v-model="newDescription"
+                :class="uiInput({ class: 'w-full resize-none' })"
+                rows="2"
+                placeholder="输入文档描述（可选）"
+              />
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="text-xs text-muted">公开文档</label>
+              <button
+                type="button"
+                :class="[
+                  'relative h-5 w-9 rounded-full transition-colors',
+                  newIsPublic ? 'bg-accent' : 'bg-input'
+                ]"
+                @click="newIsPublic = !newIsPublic"
+              >
+                <span
+                  :class="[
+                    'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
+                    newIsPublic ? 'left-4' : 'left-0.5'
+                  ]"
+                />
+              </button>
+            </div>
+          </div>
           <div class="mt-4 flex justify-end gap-2">
             <AlertDialogCancel
               :class="uiButton({ tone: 'ghost', size: 'sm' })"
@@ -318,10 +387,7 @@ function handleLogout() {
             >
               取消
             </AlertDialogCancel>
-            <AlertDialogAction
-              :class="uiButton({ size: 'sm' })"
-              @click="confirmRename"
-            >
+            <AlertDialogAction :class="uiButton({ size: 'sm' })" @click="confirmRename">
               确认
             </AlertDialogAction>
           </div>

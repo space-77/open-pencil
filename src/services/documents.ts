@@ -7,9 +7,10 @@
  * ---------------------------------------------------------------
  */
 
-import type { DocReqConfig } from "doc2ts";
-import ApiClient from "./client";
-import type { Documents as types, __common__ } from "./types";
+import ApiClient from './client'
+
+import type { Documents as types, __common__ } from './types'
+import type { DocReqConfig } from 'doc2ts'
 /**
  * @name Documents
  * @description Documents
@@ -20,9 +21,9 @@ export default class Documents extends ApiClient {
    * @description 获取当前用户的所有文档列表，支持分页、排序和搜索
    */
   getDocuments(query: types.GetDocumentsParams) {
-    const url = `/documents?${this.serialize(query)}`;
-    const config: DocReqConfig = { url, method: "get" };
-    return this.request<types.RGetDocuments>(config);
+    const url = `/documents?${this.serialize(query)}`
+    const config: DocReqConfig = { url, method: 'get' }
+    return this.request<types.RGetDocuments>(config)
   }
 
   /**
@@ -30,16 +31,16 @@ export default class Documents extends ApiClient {
    * @description 创建新文档，可选择上传.fig文件或创建空文档
    */
   postDocuments(body: __common__.MundefinedBody) {
-    const contentType = "multipart/form-data";
-    const formData = this.formData(body, contentType);
-    const url = "/documents";
+    const contentType = 'multipart/form-data'
+    const formData = this.formData(body, contentType)
+    const url = '/documents'
     const config: DocReqConfig = {
       url,
       formData,
-      headers: { "Content-Type": contentType },
-      method: "post",
-    };
-    return this.request<types.RPostDocuments>(config);
+      headers: { 'Content-Type': contentType },
+      method: 'post'
+    }
+    return this.request<types.RPostDocuments>(config)
   }
 
   /**
@@ -48,8 +49,8 @@ export default class Documents extends ApiClient {
    * @description 根据ID获取文档详细信息
    */
   getDocumentsById(id: string) {
-    const config: DocReqConfig = { url: `/documents/${id}`, method: "get" };
-    return this.request<types.RGetDocumentsById>(config);
+    const config: DocReqConfig = { url: `/documents/${id}`, method: 'get' }
+    return this.request<types.RGetDocumentsById>(config)
   }
 
   /**
@@ -57,13 +58,13 @@ export default class Documents extends ApiClient {
    * @description 更新文档的基本信息（名称、描述、公开状态）
    */
   putDocumentsById(params: types.PutDocumentsByIdParams1) {
-    const { id, ...body } = params;
+    const { id, ...body } = params
     const config: DocReqConfig = {
       url: `/documents/${id}`,
       body,
-      method: "put",
-    };
-    return this.request<types.RPutDocumentsById>(config);
+      method: 'put'
+    }
+    return this.request<types.RPutDocumentsById>(config)
   }
 
   /**
@@ -72,8 +73,8 @@ export default class Documents extends ApiClient {
    * @description 删除指定文档及其所有版本历史
    */
   deleteDocumentsById(id: string) {
-    const config: DocReqConfig = { url: `/documents/${id}`, method: "delete" };
-    return this.request<types.RDeleteDocumentsById>(config);
+    const config: DocReqConfig = { url: `/documents/${id}`, method: 'delete' }
+    return this.request<types.RDeleteDocumentsById>(config)
   }
 
   /**
@@ -81,10 +82,10 @@ export default class Documents extends ApiClient {
    * @description 复制文档创建新文档副本
    */
   postDocumentsByIdCopy(params: types.PostDocumentsByIdCopyParams1) {
-    const { id, ...body } = params;
-    const url = `/documents/${id}/copy`;
-    const config: DocReqConfig = { url, body, method: "post" };
-    return this.request<types.RPostDocumentsByIdCopy>(config);
+    const { id, ...body } = params
+    const url = `/documents/${id}/copy`
+    const config: DocReqConfig = { url, body, method: 'post' }
+    return this.request<types.RPostDocumentsByIdCopy>(config)
   }
 
   /**
@@ -92,10 +93,10 @@ export default class Documents extends ApiClient {
    * @description 修改文档名称
    */
   putDocumentsByIdRename(params: types.PutDocumentsByIdRenameParams1) {
-    const { id, ...body } = params;
-    const url = `/documents/${id}/rename`;
-    const config: DocReqConfig = { url, body, method: "put" };
-    return this.request<types.RPutDocumentsByIdRename>(config);
+    const { id, ...body } = params
+    const url = `/documents/${id}/rename`
+    const config: DocReqConfig = { url, body, method: 'put' }
+    return this.request<types.RPutDocumentsByIdRename>(config)
   }
 
   /**
@@ -103,17 +104,17 @@ export default class Documents extends ApiClient {
    * @description 上传并保存文档的.fig文件内容，支持乐观锁版本控制
    */
   putDocumentsByIdContent(params: types.PutDocumentsByIdContentParams1) {
-    const { id, ...body } = params;
-    const contentType = "multipart/form-data";
-    const formData = this.formData(body, contentType);
-    const url = `/documents/${id}/content`;
+    const { id, ...body } = params
+    const contentType = 'multipart/form-data'
+    const formData = this.formData(body, contentType)
+    const url = `/documents/${id}/content`
     const config: DocReqConfig = {
       url,
       formData,
-      headers: { "Content-Type": contentType },
-      method: "put",
-    };
-    return this.request<types.RPutDocumentsByIdContent>(config);
+      headers: { 'Content-Type': contentType },
+      method: 'put'
+    }
+    return this.request<types.RPutDocumentsByIdContent>(config)
   }
 
   /**
@@ -122,9 +123,9 @@ export default class Documents extends ApiClient {
    * @description 下载文档的.fig文件内容
    */
   getDocumentsByIdDownload(id: string) {
-    const url = `/documents/${id}/download`;
-    const config: DocReqConfig = { url, method: "get" };
-    return this.download(config);
+    const url = `/documents/${id}/download`
+    const config: DocReqConfig = { url, method: 'get' }
+    return this.download(config)
   }
 
   /**
@@ -133,9 +134,9 @@ export default class Documents extends ApiClient {
    * @description 获取文档的所有历史版本记录
    */
   getDocumentsByIdVersions(id: string) {
-    const url = `/documents/${id}/versions`;
-    const config: DocReqConfig = { url, method: "get" };
-    return this.request<types.RGetDocumentsByIdVersions>(config);
+    const url = `/documents/${id}/versions`
+    const config: DocReqConfig = { url, method: 'get' }
+    return this.request<types.RGetDocumentsByIdVersions>(config)
   }
 
   /**
@@ -144,9 +145,9 @@ export default class Documents extends ApiClient {
    * @description 上传并设置文档的缩略图
    */
   putDocumentsByIdThumbnail(id: string) {
-    const url = `/documents/${id}/thumbnail`;
-    const config: DocReqConfig = { url, method: "put" };
-    return this.request<types.RPutDocumentsByIdThumbnail>(config);
+    const url = `/documents/${id}/thumbnail`
+    const config: DocReqConfig = { url, method: 'put' }
+    return this.request<types.RPutDocumentsByIdThumbnail>(config)
   }
 
   /**
@@ -155,13 +156,11 @@ export default class Documents extends ApiClient {
    */
   postDocumentsByIdVersionsByVersionRestore({
     id,
-    version,
+    version
   }: types.PostDocumentsByIdVersionsByVersionRestoreParams) {
-    const url = `/documents/${id}/versions/${version}/restore`;
-    const config: DocReqConfig = { url, method: "post" };
-    return this.request<types.RPostDocumentsByIdVersionsByVersionRestore>(
-      config
-    );
+    const url = `/documents/${id}/versions/${version}/restore`
+    const config: DocReqConfig = { url, method: 'post' }
+    return this.request<types.RPostDocumentsByIdVersionsByVersionRestore>(config)
   }
 }
-export const documents = new Documents();
+export const documents = new Documents()

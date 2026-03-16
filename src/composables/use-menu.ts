@@ -1,6 +1,7 @@
 import { useFileDialog } from '@vueuse/core'
 import { onUnmounted } from 'vue'
 
+import { toast } from '@/composables/use-toast'
 import { IS_TAURI } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
 import {
@@ -11,7 +12,6 @@ import {
   openCloudDocumentInNewTab,
   getActiveStore
 } from '@/stores/tabs'
-import { toast } from '@/composables/use-toast'
 
 const fileDialog = useFileDialog({ accept: '.fig', multiple: false, reset: true })
 fileDialog.onChange((files) => {

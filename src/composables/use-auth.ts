@@ -36,11 +36,7 @@ export function useAuth() {
     return true
   }
 
-  async function register(
-    email: string,
-    password: string,
-    name?: string
-  ): Promise<boolean> {
+  async function register(email: string, password: string, name?: string): Promise<boolean> {
     const [err] = await auth.postRegister({ email, password, name })
 
     if (err) {

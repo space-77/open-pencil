@@ -7,9 +7,10 @@
  * ---------------------------------------------------------------
  */
 
-import type { DocReqConfig } from "doc2ts";
-import ApiClient from "./client";
-import type { Images as types, __common__ } from "./types";
+import ApiClient from './client'
+
+import type { Images as types, __common__ } from './types'
+import type { DocReqConfig } from 'doc2ts'
 /**
  * @name Images
  * @description Images
@@ -20,28 +21,26 @@ export default class Images extends ApiClient {
    * @description 上传图片资源到服务器，返回图片URL
    */
   postImages(body: __common__.MundefinedBody2) {
-    const contentType = "multipart/form-data";
-    const formData = this.formData(body, contentType);
-    const url = "/images";
+    const contentType = 'multipart/form-data'
+    const formData = this.formData(body, contentType)
+    const url = '/images'
     const config: DocReqConfig = {
       url,
       formData,
-      headers: { "Content-Type": contentType },
-      method: "post",
-    };
-    return this.request<types.RPostImages>(config);
+      headers: { 'Content-Type': contentType },
+      method: 'post'
+    }
+    return this.request<types.RPostImages>(config)
   }
 
   /**
    * @summary 批量检查图片是否存在
    * @description 检查指定hash列表中哪些图片已存在服务器
    */
-  postImagesCheck(
-    hashes: __common__.InternalhandlerCheckImagesRequest["hashes"]
-  ) {
-    const body = { hashes };
-    const config: DocReqConfig = { url: "/images/check", body, method: "post" };
-    return this.request<types.RPostImagesCheck>(config);
+  postImagesCheck(hashes: __common__.InternalhandlerCheckImagesRequest['hashes']) {
+    const body = { hashes }
+    const config: DocReqConfig = { url: '/images/check', body, method: 'post' }
+    return this.request<types.RPostImagesCheck>(config)
   }
 
   /**
@@ -50,8 +49,8 @@ export default class Images extends ApiClient {
    * @description 根据hash获取图片内容
    */
   getImagesByHash(hash: string) {
-    const config: DocReqConfig = { url: `/images/${hash}`, method: "get" };
-    return this.request<types.RGetImagesByHash>(config);
+    const config: DocReqConfig = { url: `/images/${hash}`, method: 'get' }
+    return this.request<types.RGetImagesByHash>(config)
   }
 }
-export const images = new Images();
+export const images = new Images()
