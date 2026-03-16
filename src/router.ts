@@ -10,7 +10,7 @@ const router = createRouter({
   routes: [
     { path: '/login', component: LoginView, meta: { public: true } },
     { path: '/documents', component: DocumentsView },
-    { path: '/', component: EditorView },
+    { path: '/:docId?', component: EditorView },
     { path: '/demo', component: EditorView, meta: { demo: true, public: true } },
     { path: '/share/:roomId', component: EditorView, meta: { public: true } }
   ]

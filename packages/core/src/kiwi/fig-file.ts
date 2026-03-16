@@ -4,8 +4,8 @@ import { decompress as zstdDecompress } from 'fzstd'
 import { importNodeChanges } from './fig-import'
 import { decodeBinarySchema, compileSchema, ByteBuffer } from './kiwi-schema'
 import { isZstdCompressed } from './protocol'
+import { SceneGraph } from '../scene-graph'
 
-import type { SceneGraph } from '../scene-graph'
 import type { FigmaMessage } from './codec'
 import type { FigParseResult } from './fig-parse-worker'
 

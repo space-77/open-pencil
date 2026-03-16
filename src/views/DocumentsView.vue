@@ -79,7 +79,7 @@ async function createDocument() {
       return
     }
     if (data?.id) {
-      router.push(`/?doc=${data.id}`)
+      router.push(`/${data.id}`)
     }
   } catch {
     toast.error('创建文档失败')
@@ -103,7 +103,7 @@ async function deleteDocument(id: string) {
 }
 
 function openDocument(id: string) {
-  router.push(`/?doc=${id}`)
+  router.push(`/${id}`)
 }
 
 function formatDate(dateStr?: string) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useBreakpoints, useEventListener, useUrlSearchParams } from '@vueuse/core'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
@@ -25,6 +25,7 @@ import TabBar from '@/components/TabBar.vue'
 import Toolbar from '@/components/Toolbar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const firstTab = createTab()
 const store = useEditorStore()
 const breakpoints = useBreakpoints({ mobile: 768 })
@@ -61,6 +62,19 @@ const showChrome = !('no-chrome' in params)
 if (route.meta.demo && !('test' in params)) {
   createDemoShapes(firstTab.store)
 }
+
+watch(
+  () => route.params.docId,
+  async (docId) => {
+    if (docId && typeof docId === 'string' && !route.meta.demo) {
+      const success = await store.openCloudDocument(docId)
+      if (!success) {
+        router.push('/documents')
+      }
+    }
+  },
+  { immediate: true }
+)
 
 useHead({ title: route.meta.demo ? 'Demo' : undefined })
 </script>

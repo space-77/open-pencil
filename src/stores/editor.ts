@@ -730,20 +730,17 @@ export function createEditorStore() {
         return false
       }
 
-      const downloadResult = (await documents.getDocumentsByIdDownload(docId)) as unknown as [
+      const [err2, blob] = (await documents.getDocumentsByIdDownload(docId)) as unknown as [
         unknown,
         Blob | null,
         unknown
       ]
-      const err2 = downloadResult[0]
-      const blob = downloadResult[1]
       if (err2 || !blob) {
         toast.show('下载文档失败', 'error')
         return false
       }
 
-      const file = new File([blob], docInfo.name + '.fig')
-      const imported = await readFigFile(file)
+      const imported = blob.size === 0 ? new SceneGraph() : await readFigFile(new File([blob], `${docInfo.name}.fig`))
       graph = imported
       subscribeToGraph()
       computeAllLayouts(graph)
