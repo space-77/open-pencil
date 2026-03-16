@@ -68,11 +68,17 @@ function normalizeFontFamily(family: string): string {
 }
 
 async function fetchGoogleFontFiles(family: string): Promise<Record<string, string> | null> {
-  if (googleFontsCache.has(family)) return googleFontsCache.get(family)!
+  if (googleFontsCache.has(family)) return googleFontsCache.get(family) ?? null
   if (googleFontsFailed.has(family)) return null
 
   const url = `https://www.googleapis.com/webfonts/v1/webfonts?family=${encodeURIComponent(family)}&key=${GOOGLE_FONTS_API_KEY}`
-  const response = await fetch(url)
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch {
+    googleFontsFailed.add(family)
+    return null
+  }
   if (!response.ok) {
     const normalized = normalizeFontFamily(family)
     if (normalized !== family) {
@@ -125,6 +131,39 @@ async function fetchGoogleFont(family: string, style: string): Promise<ArrayBuff
   return response.arrayBuffer()
 }
 
+async function loadLocalFont(family: string, style: string): Promise<ArrayBuffer | null> {
+  // eslint-disable-next-line typescript-eslint/prefer-optional-chain -- typeof guard needed for non-browser envs
+  if (typeof window === 'undefined' || !window.queryLocalFonts) return null
+  try {
+    const fonts = await window.queryLocalFonts()
+    const normalized = normalizeFontFamily(family)
+    const match =
+      fonts.find((f: FontInfo) => f.family === family && f.style === style) ??
+      fonts.find((f: FontInfo) => f.family === family) ??
+      (normalized !== family
+        ? (fonts.find((f: FontInfo) => f.family === normalized && f.style === style) ??
+          fonts.find((f: FontInfo) => f.family === normalized))
+        : undefined)
+    if (!match) return null
+    const blob: Blob = await match.blob()
+    const buffer = await blob.arrayBuffer()
+    // Variable fonts (fvar table) cause CanvasKit to render all text at the
+    // default weight. Skip them — Google Fonts serves per-weight static files.
+    if (isVariableFont(buffer)) return null
+    return buffer
+  } catch (e) {
+    console.warn(`Local font access failed for "${family}" ${style}:`, e)
+    return null
+  }
+}
+
+function registerAndCache(family: string, style: string, buffer: ArrayBuffer): ArrayBuffer | null {
+  if (!registerFontInCanvasKit(family, buffer)) return null
+  loadedFamilies.set(`${family}|${style}`, buffer)
+  registerFontInBrowser(family, style, buffer)
+  return buffer
+}
+
 export async function loadFont(family: string, style = 'Regular'): Promise<ArrayBuffer | null> {
   const cacheKey = `${family}|${style}`
   if (loadedFamilies.has(cacheKey)) {
@@ -134,65 +173,46 @@ export async function loadFont(family: string, style = 'Regular'): Promise<Array
     return cached
   }
 
-  // Try local font access API first (browser only)
-  if (window.queryLocalFonts) {
-    try {
-      const fonts = await window.queryLocalFonts()
-      const normalized = normalizeFontFamily(family)
-      const match =
-        fonts.find((f: FontInfo) => f.family === family && f.style === style) ??
-        fonts.find((f: FontInfo) => f.family === family) ??
-        (normalized !== family
-          ? (fonts.find((f: FontInfo) => f.family === normalized && f.style === style) ??
-            fonts.find((f: FontInfo) => f.family === normalized))
-          : undefined)
-      if (match) {
-        const blob: Blob = await match.blob()
-        const buffer = await blob.arrayBuffer()
+  const localBuffer = await loadLocalFont(family, style)
+  if (localBuffer) return registerAndCache(family, style, localBuffer)
 
-        if (registerFontInCanvasKit(family, buffer)) {
-          loadedFamilies.set(cacheKey, buffer)
-          registerFontInBrowser(family, style, buffer)
-          return buffer
-        }
-      }
-    } catch {
-      /* fall through to Google Fonts */
-    }
-  }
-
-  // Try Google Fonts
   if (typeof fetch !== 'undefined') {
     try {
       const buffer = await fetchGoogleFont(family, style)
-      if (buffer && registerFontInCanvasKit(family, buffer)) {
-        loadedFamilies.set(cacheKey, buffer)
-        registerFontInBrowser(family, style, buffer)
-        return buffer
-      }
-    } catch {
-      /* fall through to bundled */
+      if (buffer) return registerAndCache(family, style, buffer)
+    } catch (e) {
+      console.warn(`Google Fonts fetch failed for "${family}" ${style}:`, e)
     }
   }
 
-  // Fall back to bundled font
   const bundledUrl = BUNDLED_FONTS[cacheKey]
   if (bundledUrl) {
     try {
       const response = await fetch(bundledUrl)
       const buffer = await response.arrayBuffer()
-
-      if (registerFontInCanvasKit(family, buffer)) {
-        loadedFamilies.set(cacheKey, buffer)
-        registerFontInBrowser(family, style, buffer)
-        return buffer
-      }
-    } catch {
-      /* no bundled font available */
+      return registerAndCache(family, style, buffer)
+    } catch (e) {
+      console.warn(`Bundled font fetch failed for "${family}" ${style}:`, e)
     }
   }
 
   return null
+}
+
+function isVariableFont(data: ArrayBuffer): boolean {
+  if (data.byteLength < 12) return false
+  const view = new DataView(data)
+  const numTables = view.getUint16(4)
+  for (let i = 0; i < numTables && 12 + i * 16 + 4 <= data.byteLength; i++) {
+    const tag = String.fromCharCode(
+      view.getUint8(12 + i * 16),
+      view.getUint8(12 + i * 16 + 1),
+      view.getUint8(12 + i * 16 + 2),
+      view.getUint8(12 + i * 16 + 3)
+    )
+    if (tag === 'fvar') return true
+  }
+  return false
 }
 
 function registerFontInCanvasKit(family: string, data: ArrayBuffer): boolean {
@@ -269,9 +289,7 @@ export function collectFontKeys(graph: SceneGraph, nodeIds: string[]): Array<[st
   }
   for (const id of nodeIds) collect(id)
 
-  return [...fontKeys]
-    .map((k) => k.split('\0') as [string, string])
-    .filter(([family]) => family !== DEFAULT_FONT_FAMILY)
+  return [...fontKeys].map((k) => k.split('\0') as [string, string])
 }
 
 let cjkFallbackFamily: string | null = null
@@ -340,6 +358,7 @@ export function weightToStyle(weight: number, italic = false): string {
   if (weight <= 100) label = 'Thin'
   else if (weight <= 200) label = 'ExtraLight'
   else if (weight <= 300) label = 'Light'
+  else if (weight <= 400) label = 'Regular'
   else if (weight <= 500) label = 'Medium'
   else if (weight <= 600) label = 'SemiBold'
   else if (weight <= 700) label = 'Bold'

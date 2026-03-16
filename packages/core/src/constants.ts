@@ -10,7 +10,6 @@ export const COMPONENT_COLOR = { r: 0.592, g: 0.278, b: 1, a: 1 } satisfies Colo
 export const SNAP_COLOR = { r: 1.0, g: 0.0, b: 0.56, a: 1 } satisfies Color
 export const CANVAS_BG_COLOR = { r: 0.96, g: 0.96, b: 0.96, a: 1 } satisfies Color
 
-export const ROTATION_HANDLE_OFFSET = 20
 export const SNAP_THRESHOLD = 5
 
 export const RULER_SIZE = 20
@@ -37,8 +36,6 @@ export const DEFAULT_FONT_SIZE = 14
 export const DEFAULT_STROKE_MITER_LIMIT = 4
 export const LABEL_FONT_SIZE = 11
 export const SIZE_FONT_SIZE = 10
-
-export const ROTATION_HANDLE_RADIUS = 4
 
 export const HANDLE_HALF_SIZE = 3
 
@@ -83,9 +80,29 @@ export const FLASH_PADDING = 5
 export const FLASH_OVERSHOOT = 30
 export const FLASH_RADIUS = 4
 
+export const AI_ACTIVE_COLOR = { r: 0.26, g: 0.52, b: 0.96 }
+export const AI_DONE_COLOR = { r: 0.16, g: 0.73, b: 0.36 }
+export const AI_PULSE_PERIOD_MS = 1500
+export const AI_DONE_DURATION_MS = 800
+
 export const TEXT_SELECTION_COLOR = { r: 0.26, g: 0.52, b: 0.96, a: 0.3 }
 export const TEXT_CARET_COLOR = BLACK
 export const TEXT_CARET_WIDTH = 1
+
+export type ACPAgentID = 'claude-code' | 'codex' | 'gemini-cli'
+
+export interface ACPAgentDef {
+  id: ACPAgentID
+  name: string
+  command: string
+  args: string[]
+}
+
+export const ACP_AGENTS: ACPAgentDef[] = [
+  { id: 'claude-code', name: 'Claude Code', command: 'claude-agent-acp', args: [] },
+  { id: 'codex', name: 'Codex', command: 'codex-acp', args: [] },
+  { id: 'gemini-cli', name: 'Gemini CLI', command: 'gemini', args: ['--acp'] }
+]
 
 export type AIProviderID =
   | 'openrouter'
@@ -93,7 +110,10 @@ export type AIProviderID =
   | 'openai'
   | 'google'
   | 'openai-compatible'
+  | 'zai'
+  | 'minimax'
   | 'anthropic-compatible'
+  | `acp:${ACPAgentID}`
 
 export interface ModelOption {
   id: string
@@ -169,6 +189,41 @@ export const AI_PROVIDERS: AIProviderDef[] = [
     models: [
       { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', tag: '1M context' },
       { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', tag: 'Fast' }
+    ]
+  },
+  {
+    id: 'zai',
+    name: 'Z.ai',
+    keyPlaceholder: 'API key',
+    keyURL: 'https://docs.z.ai/api-reference/introduction',
+    defaultModel: 'glm-5',
+    models: [
+      { id: 'glm-5', name: 'GLM-5' },
+      { id: 'glm-5-code', name: 'GLM-5-Code' },
+      { id: 'glm-4.7', name: 'GLM-4.7' },
+      { id: 'glm-4.7-flashx', name: 'GLM-4.7-FlashX' },
+      { id: 'glm-4.6', name: 'GLM-4.6' },
+      { id: 'glm-4.5', name: 'GLM-4.5' },
+      { id: 'glm-4.5-x', name: 'GLM-4.5-X' },
+      { id: 'glm-4.5-air', name: 'GLM-4.5-Air' },
+      { id: 'glm-4.5-airx', name: 'GLM-4.5-AirX' },
+      { id: 'glm-4-32b-0414-128k', name: 'GLM-4-32B-0414-128K' },
+      { id: 'glm-4.7-flash', name: 'GLM-4.7-Flash', tag: 'Free' },
+      { id: 'glm-4.5-flash', name: 'GLM-4.5-Flash', tag: 'Free' }
+    ]
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    keyPlaceholder: 'API key',
+    keyURL: 'https://platform.minimax.io/user-center/basic-information/interface-key',
+    defaultModel: 'MiniMax-M2.5',
+    models: [
+      { id: 'MiniMax-M2.5', name: 'MiniMax-M2.5', tag: 'Best' },
+      { id: 'MiniMax-M2.5-highspeed', name: 'MiniMax-M2.5 Highspeed', tag: 'Fast' },
+      { id: 'MiniMax-M2.1', name: 'MiniMax-M2.1' },
+      { id: 'MiniMax-M2.1-highspeed', name: 'MiniMax-M2.1 Highspeed', tag: 'Fast' },
+      { id: 'MiniMax-M2', name: 'MiniMax-M2' }
     ]
   },
   {

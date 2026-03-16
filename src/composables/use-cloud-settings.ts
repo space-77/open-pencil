@@ -15,7 +15,9 @@ const SETTING_KEYS = [
   'ai-custom-model',
   'ai-api-type',
   'ai-max-output-tokens',
-  'collab-name'
+  'collab-name',
+  'pexels-api-key',
+  'unsplash-access-key',
 ] as const
 
 type SettingKey = (typeof SETTING_KEYS)[number]
@@ -56,7 +58,8 @@ function loadFromLocalStorage(): void {
 
 export function useCloudSetting<T extends string = string>(
   key: SettingKey,
-  defaultValue: T = '' as T
+  defaultValue: T = '' as T,
+  prefix: string = 'open-pencil:'
 ) {
   const value = ref<T>(defaultValue)
 
@@ -73,7 +76,7 @@ export function useCloudSetting<T extends string = string>(
       void flushPendingWrites()
     }, 1000)
 
-    localStorage.setItem(`open-pencil:${key}`, newValue)
+    localStorage.setItem(`${prefix}${key}`, newValue)
   })
 
   return value

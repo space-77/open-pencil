@@ -22,9 +22,7 @@ import {
   exportFigFile,
   importClipboardNodes,
   parseFigmaClipboard,
-  parseOpenPencilClipboard,
   buildFigmaClipboardHTML,
-  buildOpenPencilClipboardHTML,
   prefetchFigmaSchema,
   readFigFile,
   computeImageHash,
@@ -210,7 +208,7 @@ export function createEditorStore() {
     actionToast: null as string | null,
     mobileDrawerSnap: 'closed' as 'closed' | 'half' | 'full',
     clipboardHtml: '',
-    autosaveEnabled: true,
+    autosaveEnabled: false,
     cloudDocumentId: null as string | null,
     cloudVersion: 0,
     cloudSyncEnabled: false,
@@ -233,8 +231,8 @@ export function createEditorStore() {
         if (!state.autosaveEnabled) return
         try {
           await writeFile(await buildFigFile())
-        } catch {
-          // silently fail — user can still save manually
+        } catch (e) {
+          console.warn('Autosave failed:', e)
         }
       }, AUTOSAVE_DELAY)
     }
@@ -275,6 +273,29 @@ export function createEditorStore() {
     if (!flashRafId) pumpFlashes()
   }
 
+  function aiMarkActive(nodeIds: string[]) {
+    if (!_renderer) return
+    _renderer.aiMarkActive(nodeIds)
+    if (!flashRafId) pumpFlashes()
+  }
+
+  function aiMarkDone(nodeIds: string[]) {
+    if (!_renderer) return
+    _renderer.aiMarkDone(nodeIds)
+    if (!flashRafId) pumpFlashes()
+  }
+
+  function aiFlashDone(nodeIds: string[]) {
+    if (!_renderer) return
+    _renderer.aiFlashDone(nodeIds)
+    if (!flashRafId) pumpFlashes()
+  }
+
+  function aiClearAll() {
+    if (!_renderer) return
+    _renderer.aiClearAll()
+  }
+
   function pumpFlashes() {
     if (!_renderer?.hasActiveFlashes) {
       flashRafId = 0
@@ -288,7 +309,7 @@ export function createEditorStore() {
     return !parentId || parentId === graph.rootId || parentId === state.currentPageId
   }
 
-  function switchPage(pageId: string) {
+  async function switchPage(pageId: string) {
     const page = graph.getNode(pageId)
     if (page?.type !== 'CANVAS') return
 
@@ -318,7 +339,7 @@ export function createEditorStore() {
       state.pageColor = { ...CANVAS_BG_COLOR }
     }
 
-    void loadFontsForNodes(graph.getChildren(pageId).map((n) => n.id))
+    await loadFontsForNodes(graph.getChildren(pageId).map((n) => n.id))
     requestRender()
   }
 
@@ -326,7 +347,7 @@ export function createEditorStore() {
     const pages = graph.getPages()
     const pageName = name ?? `Page ${pages.length + 1}`
     const page = graph.addPage(pageName)
-    switchPage(page.id)
+    void switchPage(page.id)
     return page.id
   }
 
@@ -339,7 +360,7 @@ export function createEditorStore() {
     if (state.currentPageId === pageId) {
       const newIdx = Math.min(idx, pages.length - 2)
       const remaining = graph.getPages()
-      switchPage(remaining[newIdx].id)
+      void switchPage(remaining[newIdx].id)
     }
   }
 
@@ -660,14 +681,19 @@ export function createEditorStore() {
     }
   }
 
+  function yieldToUI(): Promise<void> {
+    return new Promise((r) => requestAnimationFrame(() => r()))
+  }
+
   async function openFigFile(file: File, handle?: FileSystemFileHandle, path?: string) {
     try {
       state.loading = true
-      await new Promise((r) => requestAnimationFrame(r))
+      await yieldToUI()
       const imported = await readFigFile(file)
+      await yieldToUI()
       graph = imported
-      subscribeToGraph()
       computeAllLayouts(graph)
+      subscribeToGraph()
       undo.clear()
       pageViewports.clear()
       fileHandle = handle ?? null
@@ -687,6 +713,7 @@ export function createEditorStore() {
       void startWatchingFile()
     } catch (e) {
       console.error('Failed to open .fig file:', e)
+      toast.show(`Failed to open file: ${e instanceof Error ? e.message : String(e)}`, 'error')
     } finally {
       state.loading = false
     }
@@ -943,14 +970,14 @@ export function createEditorStore() {
       const file = new File([blob], state.documentName + '.fig')
       const imported = await readFigFile(file)
       graph = imported
-      subscribeToGraph()
       computeAllLayouts(graph)
+      subscribeToGraph()
     } else if (fileHandle) {
       const file = await fileHandle.getFile()
       const imported = await readFigFile(file)
       graph = imported
-      subscribeToGraph()
       computeAllLayouts(graph)
+      subscribeToGraph()
     } else {
       return
     }
@@ -1147,7 +1174,8 @@ export function createEditorStore() {
   let pendingComponentSync: Set<string> | null = null
 
   function flushComponentSync() {
-    const ids = pendingComponentSync!
+    const ids = pendingComponentSync
+    if (!ids) return
     pendingComponentSync = null
     const componentIds = new Set<string>()
     for (const id of ids) {
@@ -1689,7 +1717,7 @@ export function createEditorStore() {
       current = current.parentId ? graph.getNode(current.parentId) : undefined
     }
     if (current && current.id !== state.currentPageId) {
-      switchPage(current.id)
+      void switchPage(current.id)
     }
 
     state.selectedIds = new Set([main.id])
@@ -2116,15 +2144,8 @@ export function createEditorStore() {
     if (nodes.length === 0) return
 
     const names = nodes.map((n) => n.name).join('\n')
-    const renderer = _renderer
-    const textPicBuilder = renderer
-      ? (node: SceneNode) => renderer.buildTextPicture(node)
-      : undefined
-    const internalHtml = buildOpenPencilClipboardHTML(nodes, graph, textPicBuilder)
-    const figmaHtml = buildFigmaClipboardHTML(nodes, graph)
-
-    const html = figmaHtml ? figmaHtml + internalHtml : internalHtml
-    clipboardData.setData('text/html', html)
+    const html = buildFigmaClipboardHTML(nodes, graph)
+    if (html) clipboardData.setData('text/html', html)
     clipboardData.setData('text/plain', names)
   }
 
@@ -2166,19 +2187,21 @@ export function createEditorStore() {
     const toLoad = collectFontKeys(graph, nodeIds)
     if (toLoad.length === 0) return
 
-    await Promise.all(toLoad.map(([family, style]) => loadFont(family, style)))
+    const results = await Promise.all(toLoad.map(([family, style]) => loadFont(family, style)))
+    const failed = toLoad.filter((_, i) => results[i] === null)
+    if (failed.length > 0) {
+      const families = [...new Set(failed.map(([family]) => family))]
+      toast.show(
+        families.length === 1
+          ? `Font "${families[0]}" could not be loaded`
+          : `${families.length} fonts could not be loaded: ${families.join(', ')}`,
+        'warning'
+      )
+    }
     computeAllLayouts(graph, state.currentPageId)
-    requestRender()
   }
 
   function pasteFromHTML(html: string, cursorPos?: Vector) {
-    const own = parseOpenPencilClipboard(html)
-    if (own) {
-      for (const [hash, data] of own.images) graph.images.set(hash, data)
-      pasteOpenPencilNodes(own.nodes, undefined, cursorPos)
-      return
-    }
-
     void parseFigmaClipboard(html).then((figma) => {
       if (figma) {
         const prevSelection = new Set(state.selectedIds)
@@ -2234,70 +2257,6 @@ export function createEditorStore() {
         "Some images couldn't be pasted — Figma doesn't include image data in clipboard",
         'warning'
       )
-    }
-  }
-
-  function pasteOpenPencilNodes(
-    nodes: Array<SceneNode & { children?: SceneNode[] }>,
-    parentId?: string,
-    cursorPos?: Vector
-  ) {
-    const target = parentId ?? state.currentPageId
-    const prevSelection = new Set(state.selectedIds)
-    const newIds: string[] = []
-    const created: Array<{ id: string; parentId: string; snapshot: SceneNode }> = []
-
-    let offsetX = 20
-    let offsetY = 20
-    if (cursorPos && nodes.length > 0) {
-      let minX = Infinity
-      let minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-      for (const n of nodes) {
-        minX = Math.min(minX, n.x)
-        minY = Math.min(minY, n.y)
-        maxX = Math.max(maxX, n.x + n.width)
-        maxY = Math.max(maxY, n.y + n.height)
-      }
-      offsetX = cursorPos.x - (minX + maxX) / 2
-      offsetY = cursorPos.y - (minY + maxY) / 2
-    }
-
-    function createTree(src: SceneNode & { children?: SceneNode[] }, pid: string, isTop: boolean) {
-      const { id: _srcId, parentId: _srcParent, childIds: _srcChildren, ...rest } = src
-      const node = graph.createNode(src.type, pid, {
-        ...rest,
-        x: src.x + (isTop ? offsetX : 0),
-        y: src.y + (isTop ? offsetY : 0)
-      })
-      created.push({ id: node.id, parentId: pid, snapshot: { ...node } })
-      if (isTop) newIds.push(node.id)
-      if (src.children) {
-        for (const child of src.children) {
-          createTree(child, node.id, false)
-        }
-      }
-    }
-
-    for (const src of nodes) {
-      createTree(src, target, true)
-    }
-    if (newIds.length > 0) {
-      state.selectedIds = new Set(newIds)
-      undo.push({
-        label: 'Paste',
-        forward: () => {
-          for (const { snapshot, parentId: pid } of created) {
-            graph.createNode(snapshot.type, pid, snapshot)
-          }
-          state.selectedIds = new Set(newIds)
-        },
-        inverse: () => {
-          for (const { id } of [...created].reverse()) graph.deleteNode(id)
-          state.selectedIds = prevSelection
-        }
-      })
     }
   }
 
@@ -2610,6 +2569,10 @@ export function createEditorStore() {
     requestRender,
     requestRepaint,
     flashNodes,
+    aiMarkActive,
+    aiMarkDone,
+    aiFlashDone,
+    aiClearAll,
     setTool,
     select,
     clearSelection,

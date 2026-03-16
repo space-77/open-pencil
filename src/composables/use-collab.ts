@@ -230,8 +230,9 @@ export function useCollab(store: EditorStore) {
     const unbindDeleted = store.graph.emitter.on('node:deleted', (id) => {
       if (!suppressGraphSync && ydoc && ynodes) {
         suppressYjsEvents = true
+        const map = ynodes
         ydoc.transact(() => {
-          ynodes!.delete(id)
+          map.delete(id)
         })
         suppressYjsEvents = false
       }
@@ -550,7 +551,7 @@ export function useCollab(store: EditorStore) {
     }
     const cursor = peerState.cursor as { x: number; y: number; pageId: string; zoom?: number }
     if (cursor.pageId !== store.state.currentPageId) {
-      store.switchPage(cursor.pageId)
+      void store.switchPage(cursor.pageId)
     }
     const canvas = document.querySelector('canvas')
     if (!canvas) return

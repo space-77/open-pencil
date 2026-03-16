@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- codec types and encode/decode logic are tightly coupled */
 /**
  * Message Encoding/Decoding for Figma Multiplayer
  *
@@ -12,8 +13,6 @@ import { parseColor } from '../color'
 import { compileSchema, encodeBinarySchema } from './kiwi-schema'
 import { isZstdCompressed, getKiwiMessageType } from './protocol'
 import figmaSchema from './schema'
-
-import type { Schema } from './kiwi-schema'
 
 interface CompiledSchema {
   encodeMessage(message: unknown): Uint8Array
@@ -197,6 +196,16 @@ export interface Paint {
   image?: { hash: string }
   imageScaleMode?: string
   colorVariableBinding?: VariableBinding
+  colorVar?: {
+    value?: {
+      alias?: {
+        guid?: GUID
+        assetRef?: { key: string; version: string }
+      }
+    }
+    dataType?: string
+    resolvedDataType?: string
+  }
 }
 
 export interface Effect {
@@ -278,6 +287,7 @@ export interface NodeChange {
   // Frame
   clipsContent?: boolean
   frameMaskDisabled?: boolean
+  resizeToFit?: boolean
   // Vector
   vectorData?: unknown
   fillGeometry?: Array<{ windingRule?: string; commandsBlob?: number }>

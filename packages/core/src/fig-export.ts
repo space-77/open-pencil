@@ -43,7 +43,11 @@ function variableValueToKiwi(
     return { value: { boolValue: !!value }, dataType: 'BOOLEAN', resolvedDataType: 'BOOLEAN' }
   }
   if (type === 'STRING') {
-    return { value: { textValue: String(value) }, dataType: 'STRING', resolvedDataType: 'STRING' }
+    return {
+      value: { textValue: typeof value === 'string' ? value : JSON.stringify(value) },
+      dataType: 'STRING',
+      resolvedDataType: 'STRING'
+    }
   }
   return { value: { floatValue: Number(value) }, dataType: 'FLOAT', resolvedDataType: 'FLOAT' }
 }
@@ -91,6 +95,7 @@ export async function exportFigFile(
   const blobs: Uint8Array[] = []
   const pages = graph.getPages(true)
   const nodeIdToGuid = new Map<string, GUID>()
+  const varIdToGuid = new Map<string, GUID>()
   const fontDigestMap = await buildFontDigestMap(graph)
   let internalCanvasGuid: GUID | null = null
 
@@ -123,7 +128,7 @@ export async function exportFigFile(
     const children = graph.getChildren(page.id)
     for (let i = 0; i < children.length; i++) {
       nodeChanges.push(
-        ...sceneNodeToKiwi(children[i], canvasGuid, i, localIdCounter, graph, blobs, nodeIdToGuid, fontDigestMap)
+        ...sceneNodeToKiwi(children[i], canvasGuid, i, localIdCounter, graph, blobs, nodeIdToGuid, fontDigestMap, varIdToGuid)
       )
     }
   }
@@ -148,9 +153,12 @@ export async function exportFigFile(
       })
     }
 
+    const modeIdToGuid = new Map<string, GUID>()
+
     let collIdx = 0
     for (const [colId, col] of graph.variableCollections) {
-      const colGuid = stringToGuid(colId)
+      const colGuid = { sessionID: 0, localID: localIdCounter.value++ }
+      varIdToGuid.set(colId, colGuid)
       const colNc: KiwiNodeChange = {
         guid: colGuid,
         parentIndex: { guid: internalCanvasGuid, position: fractionalPosition(collIdx++) },
@@ -159,11 +167,11 @@ export async function exportFigFile(
         phase: 'CREATED',
         strokeAlign: 'CENTER',
         strokeJoin: 'BEVEL',
-        variableSetModes: col.modes.map((m, i) => ({
-          id: stringToGuid(m.modeId),
-          name: m.name,
-          sortPosition: fractionalPosition(i)
-        }))
+        variableSetModes: col.modes.map((m, i) => {
+          const mGuid = { sessionID: 0, localID: localIdCounter.value++ }
+          modeIdToGuid.set(m.modeId, mGuid)
+          return { id: mGuid, name: m.name, sortPosition: fractionalPosition(i) }
+        })
       }
       nodeChanges.push(colNc)
 
@@ -172,12 +180,13 @@ export async function exportFigFile(
         const variable = graph.variables.get(varId)
         if (!variable) continue
 
-        const varGuid = stringToGuid(varId)
+        const varGuid = { sessionID: 0, localID: localIdCounter.value++ }
+        varIdToGuid.set(varId, varGuid)
         const typeMap: Record<string, string> = { COLOR: 'COLOR', BOOLEAN: 'BOOLEAN', STRING: 'STRING' }
         const resolvedType = typeMap[variable.type] ?? 'FLOAT'
 
         const entries = Object.entries(variable.valuesByMode).map(([modeId, value]) => ({
-          modeID: stringToGuid(modeId),
+          modeID: modeIdToGuid.get(modeId) ?? stringToGuid(modeId),
           variableData: variableValueToKiwi(value, variable.type)
         }))
 
@@ -239,6 +248,16 @@ export async function exportFigFile(
     )
   }
 
+  return compressFigData(schemaDeflated, kiwiData, thumbnailPng, metaJson, imageEntries)
+}
+
+export function compressFigDataSync(
+  schemaDeflated: Uint8Array,
+  kiwiData: Uint8Array,
+  thumbnailPng: Uint8Array,
+  metaJson: string,
+  imageEntries: Array<{ name: string; data: Uint8Array }>
+): Uint8Array {
   const canvasData = buildFigKiwi(schemaDeflated, kiwiData)
   const zipEntries: Zippable = {
     'canvas.fig': [canvasData, { level: 0 }],
@@ -249,4 +268,59 @@ export async function exportFigFile(
     zipEntries[entry.name] = [entry.data, { level: 0 }]
   }
   return zipSync(zipEntries)
+}
+
+function canUseWorker(): boolean {
+  return typeof Worker !== 'undefined' && typeof window !== 'undefined'
+}
+
+function compressViaWorker(
+  schemaDeflated: Uint8Array,
+  kiwiData: Uint8Array,
+  thumbnailPng: Uint8Array,
+  metaJson: string,
+  imageEntries: Array<{ name: string; data: Uint8Array }>
+): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./fig-export-worker.ts', import.meta.url), { type: 'module' })
+
+    worker.onmessage = (e: MessageEvent<Uint8Array>) => {
+      resolve(e.data)
+      worker.terminate()
+    }
+    worker.onerror = (err) => {
+      reject(new Error(err.message))
+      worker.terminate()
+    }
+
+    const imgCopies = imageEntries.map((e) => ({
+      name: e.name,
+      data: new Uint8Array(e.data)
+    }))
+
+    const transferables = [
+      schemaDeflated.buffer,
+      kiwiData.buffer,
+      thumbnailPng.buffer,
+      ...imgCopies.map((e) => e.data.buffer)
+    ]
+
+    worker.postMessage(
+      { schemaDeflated, kiwiData, thumbnailPng, metaJson, images: imgCopies },
+      transferables
+    )
+  })
+}
+
+export function compressFigData(
+  schemaDeflated: Uint8Array,
+  kiwiData: Uint8Array,
+  thumbnailPng: Uint8Array,
+  metaJson: string,
+  imageEntries: Array<{ name: string; data: Uint8Array }>
+): Promise<Uint8Array> {
+  if (canUseWorker()) {
+    return compressViaWorker(schemaDeflated, kiwiData, thumbnailPng, metaJson, imageEntries)
+  }
+  return Promise.resolve(compressFigDataSync(schemaDeflated, kiwiData, thumbnailPng, metaJson, imageEntries))
 }
