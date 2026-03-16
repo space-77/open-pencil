@@ -88,6 +88,17 @@ export default class Documents extends ApiClient {
   }
 
   /**
+   * @summary 文档改名
+   * @description 修改文档名称
+   */
+  putDocumentsByIdRename(params: types.PutDocumentsByIdRenameParams1) {
+    const { id, ...body } = params;
+    const url = `/documents/${id}/rename`;
+    const config: DocReqConfig = { url, body, method: "put" };
+    return this.request<types.RPutDocumentsByIdRename>(config);
+  }
+
+  /**
    * @summary 保存文档内容
    * @description 上传并保存文档的.fig文件内容，支持乐观锁版本控制
    */

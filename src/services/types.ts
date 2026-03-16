@@ -872,6 +872,81 @@ export namespace __common__ {
     msg?: string;
   }
 
+  export interface InternalhandlerRenameDocumentRequest {
+    /**
+     * @example New Name
+     * @description 新名称
+     */
+    name?: string;
+  }
+
+  export interface InternalhandlerRenameDocumentResponse {
+    /**
+     * @example 200
+     * @description 状态码
+     */
+    code?: number;
+    /**
+     * @description 文档数据
+     */
+    data?: {
+      /**
+       * @example 2024-01-01T00:00:00Z
+       * @description 创建时间
+       */
+      created_at?: string;
+      /**
+       * @example A sample design document
+       * @description 文档描述
+       */
+      description?: string;
+      /**
+       * @example sha256:abc123...
+       * @description 文件哈希值
+       */
+      file_hash?: string;
+      /**
+       * @example 102400
+       * @description 文件大小（字节）
+       */
+      file_size?: number;
+      /**
+       * @example doc_abc123
+       * @description 文档ID
+       */
+      id?: string;
+      /**
+       * @description 是否公开
+       */
+      is_public?: boolean;
+      /**
+       * @example My Design
+       * @description 文档名称
+       */
+      name?: string;
+      /**
+       * @example usr_abc123
+       * @description 所有者ID
+       */
+      owner_id?: string;
+      /**
+       * @example 2024-01-01T00:00:00Z
+       * @description 更新时间
+       */
+      updated_at?: string;
+      /**
+       * @example 1
+       * @description 文档版本号
+       */
+      version?: number;
+    };
+    /**
+     * @example 改名成功
+     * @description 提示消息
+     */
+    msg?: string;
+  }
+
   export interface InternalhandlerVersionListResponse {
     /**
      * @example 200
@@ -1363,31 +1438,6 @@ export namespace __common__ {
      * @description 用户信息
      */
     user?: {
-      /**
-       * @example https://example.com/avatar.png
-       * @description 头像URL
-       */
-      avatar_url?: string;
-      /**
-       * @example 2024-01-01T00:00:00Z
-       * @description 创建时间
-       */
-      created_at?: string;
-      /**
-       * @example user@example.com
-       * @description 邮箱地址
-       */
-      email?: string;
-      /**
-       * @example usr_abc123
-       * @description 用户ID
-       */
-      id?: string;
-      /**
-       * @example John Doe
-       * @description 用户昵称
-       */
-      name?: string;
       /**
        * @example https://example.com/avatar.png
        * @description 头像URL
@@ -1908,6 +1958,23 @@ export namespace Documents {
     id: string;
   }
 
+  export interface PutDocumentsByIdRenameRes
+    extends __common__.InternalhandlerRenameDocumentResponse {}
+
+  export interface PutDocumentsByIdRenameParams {
+    /**
+     * @example "doc_abc123"
+     * @description 文档ID
+     */
+    id: string;
+  }
+
+  /**
+   * @description 改名请求参数
+   */
+  export interface PutDocumentsByIdRenameBody
+    extends __common__.InternalhandlerRenameDocumentRequest {}
+
   export interface GetDocumentsByIdVersionsRes
     extends __common__.InternalhandlerVersionListResponse {}
 
@@ -1981,6 +2048,16 @@ export namespace Documents {
       any,
       __common__.InternalhandlerCopyDocumentResponse["data"],
       __common__.InternalhandlerCopyDocumentResponse
+    ]
+  >;
+  export type PutDocumentsByIdRenameParams1 = PutDocumentsByIdRenameParams &
+    __common__.InternalhandlerRenameDocumentRequest;
+
+  export type RPutDocumentsByIdRename = Promise<
+    [
+      any,
+      __common__.InternalhandlerRenameDocumentResponse["data"],
+      __common__.InternalhandlerRenameDocumentResponse
     ]
   >;
   export type PutDocumentsByIdContentParams1 = PutDocumentsByIdContentParams &
