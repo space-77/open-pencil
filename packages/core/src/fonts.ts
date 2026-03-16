@@ -2,6 +2,7 @@ import type { CanvasKit, TypefaceFontProvider } from 'canvaskit-wasm'
 
 import {
   DEFAULT_FONT_FAMILY,
+  IS_BROWSER,
   CJK_FALLBACK_FAMILIES_MACOS,
   CJK_FALLBACK_FAMILIES_WINDOWS,
   CJK_FALLBACK_FAMILIES_LINUX,
@@ -29,7 +30,7 @@ export function getFontProvider(): TypefaceFontProvider | null {
 }
 
 export async function queryFonts(): Promise<FontInfo[]> {
-  if (typeof window === 'undefined' || !window.queryLocalFonts) return []
+  if (!IS_BROWSER || !window.queryLocalFonts) return []
   try {
     const fonts = await window.queryLocalFonts()
     const seen = new Set<string>()
@@ -63,7 +64,7 @@ const BUNDLED_FONTS: Record<string, string> = {
 const googleFontsCache = new Map<string, Record<string, string>>()
 const googleFontsFailed = new Set<string>()
 
-function normalizeFontFamily(family: string): string {
+export function normalizeFontFamily(family: string): string {
   return family.replace(/\s+Variable$/i, '')
 }
 
@@ -109,7 +110,7 @@ async function fetchGoogleFontFiles(family: string): Promise<Record<string, stri
   return files
 }
 
-function styleToVariant(style: string): string {
+export function styleToVariant(style: string): string {
   const weight = styleToWeight(style)
   const italic = style.toLowerCase().includes('italic')
   if (weight === 400 && !italic) return 'regular'
@@ -131,19 +132,24 @@ async function fetchGoogleFont(family: string, style: string): Promise<ArrayBuff
   return response.arrayBuffer()
 }
 
-async function loadLocalFont(family: string, style: string): Promise<ArrayBuffer | null> {
-  // eslint-disable-next-line typescript-eslint/prefer-optional-chain -- typeof guard needed for non-browser envs
-  if (typeof window === 'undefined' || !window.queryLocalFonts) return null
+async function findLocalFont(
+  family: string,
+  style?: string
+): Promise<ArrayBuffer | null> {
+  if (!IS_BROWSER || !window.queryLocalFonts) return null
   try {
     const fonts = await window.queryLocalFonts()
+    const families = [family]
     const normalized = normalizeFontFamily(family)
-    const match =
-      fonts.find((f: FontInfo) => f.family === family && f.style === style) ??
-      fonts.find((f: FontInfo) => f.family === family) ??
-      (normalized !== family
-        ? (fonts.find((f: FontInfo) => f.family === normalized && f.style === style) ??
-          fonts.find((f: FontInfo) => f.family === normalized))
-        : undefined)
+    if (normalized !== family) families.push(normalized)
+
+    let match: (typeof fonts)[number] | undefined
+    for (const f of families) {
+      match = style ? fonts.find((x) => x.family === f && x.style === style) : undefined
+      match ??= fonts.find((x) => x.family === f)
+      if (match) break
+    }
+
     if (!match) return null
     const blob: Blob = await match.blob()
     const buffer = await blob.arrayBuffer()
@@ -152,9 +158,21 @@ async function loadLocalFont(family: string, style: string): Promise<ArrayBuffer
     if (isVariableFont(buffer)) return null
     return buffer
   } catch (e) {
-    console.warn(`Local font access failed for "${family}" ${style}:`, e)
+    console.warn(`Local font access failed for "${family}" ${style ?? ''}:`, e)
     return null
   }
+}
+
+export async function fetchBundledFont(url: string): Promise<ArrayBuffer | null> {
+  if (IS_BROWSER) {
+    const response = await fetch(url)
+    return response.arrayBuffer()
+  }
+  const { readFile } = await import('node:fs/promises')
+  const { fileURLToPath } = await import('node:url')
+  const assetPath = fileURLToPath(new URL(`../assets${url}`, import.meta.url))
+  const buf = await readFile(assetPath)
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
 }
 
 function registerAndCache(family: string, style: string, buffer: ArrayBuffer): ArrayBuffer | null {
@@ -173,7 +191,7 @@ export async function loadFont(family: string, style = 'Regular'): Promise<Array
     return cached
   }
 
-  const localBuffer = await loadLocalFont(family, style)
+  const localBuffer = await findLocalFont(family, style)
   if (localBuffer) return registerAndCache(family, style, localBuffer)
 
   if (typeof fetch !== 'undefined') {
@@ -188,18 +206,17 @@ export async function loadFont(family: string, style = 'Regular'): Promise<Array
   const bundledUrl = BUNDLED_FONTS[cacheKey]
   if (bundledUrl) {
     try {
-      const response = await fetch(bundledUrl)
-      const buffer = await response.arrayBuffer()
-      return registerAndCache(family, style, buffer)
+      const buffer = await fetchBundledFont(bundledUrl)
+      if (buffer) return registerAndCache(family, style, buffer)
     } catch (e) {
-      console.warn(`Bundled font fetch failed for "${family}" ${style}:`, e)
+      console.warn(`Bundled font load failed for "${family}" ${style}:`, e)
     }
   }
 
   return null
 }
 
-function isVariableFont(data: ArrayBuffer): boolean {
+export function isVariableFont(data: ArrayBuffer): boolean {
   if (data.byteLength < 12) return false
   const view = new DataView(data)
   const numTables = view.getUint16(4)
@@ -226,7 +243,7 @@ function registerFontInCanvasKit(family: string, data: ArrayBuffer): boolean {
 }
 
 function registerFontInBrowser(family: string, style: string, data: ArrayBuffer) {
-  if (typeof document === 'undefined') return
+  if (!IS_BROWSER) return
   const weight = styleToWeight(style)
   const italic = style.toLowerCase().includes('italic') ? 'italic' : 'normal'
   const face = new FontFace(family, data, {
@@ -303,31 +320,14 @@ function getCJKCandidates(): string[] {
   return CJK_FALLBACK_FAMILIES_LINUX
 }
 
-async function tryLoadLocalFont(family: string): Promise<ArrayBuffer | null> {
-  if (typeof window === 'undefined' || !window.queryLocalFonts) return null
-  try {
-    const fonts = await window.queryLocalFonts()
-    const match = fonts.find((f: FontInfo) => f.family === family)
-    if (!match) return null
-    const blob: Blob = await match.blob()
-    const buffer = await blob.arrayBuffer()
-    if (!registerFontInCanvasKit(family, buffer)) return null
-    const cacheKey = `${family}|Regular`
-    loadedFamilies.set(cacheKey, buffer)
-    registerFontInBrowser(family, 'Regular', buffer)
-    return buffer
-  } catch {
-    return null
-  }
-}
-
 export async function ensureCJKFallback(): Promise<string | null> {
   if (cjkFallbackFamily) return cjkFallbackFamily
   if (cjkFallbackPromise) return cjkFallbackPromise
 
   cjkFallbackPromise = (async () => {
     for (const family of getCJKCandidates()) {
-      if (await tryLoadLocalFont(family)) {
+      const buffer = await findLocalFont(family)
+      if (buffer && registerAndCache(family, 'Regular', buffer)) {
         cjkFallbackFamily = family
         return family
       }

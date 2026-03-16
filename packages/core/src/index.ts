@@ -1,5 +1,6 @@
 export type { GUID, Color, Vector, Matrix, Rect } from './types'
 export { degToRad, radToDeg, rotatePoint, rotatedCorners, rotatedBBox } from './geometry'
+export { randomHex, randomInt, randomIndex } from './random'
 
 export * from './constants'
 
@@ -95,7 +96,11 @@ export {
   getCJKFallbackFamily,
   setCJKFallbackFamily,
   styleToWeight,
-  weightToStyle
+  weightToStyle,
+  normalizeFontFamily,
+  isVariableFont,
+  styleToVariant,
+  fetchBundledFont
 } from './fonts'
 export {
   parseColor,

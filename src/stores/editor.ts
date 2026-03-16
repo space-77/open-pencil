@@ -213,7 +213,8 @@ export function createEditorStore() {
     cloudVersion: 0,
     cloudSyncEnabled: false,
     cloudSaving: false,
-    cloudLoading: false
+    cloudLoading: false,
+    enteredContainerId: null as string | null
   })
 
   const AUTOSAVE_DELAY = 3000
@@ -323,6 +324,7 @@ export function createEditorStore() {
 
     // Switch
     state.currentPageId = pageId
+    state.enteredContainerId = null
     clearSelection()
 
     // Restore viewport
@@ -387,6 +389,29 @@ export function createEditorStore() {
 
   function clearSelection() {
     state.selectedIds = new Set()
+  }
+
+  function validateEnteredContainer() {
+    if (state.enteredContainerId && !graph.getNode(state.enteredContainerId)) {
+      state.enteredContainerId = null
+    }
+  }
+
+  function enterContainer(id: string) {
+    state.enteredContainerId = id
+  }
+
+  function exitContainer() {
+    const entered = state.enteredContainerId
+    if (!entered) return
+    const node = graph.getNode(entered)
+    const parentId = node?.parentId
+    if (parentId && parentId !== state.currentPageId) {
+      state.enteredContainerId = parentId
+    } else {
+      state.enteredContainerId = null
+    }
+    state.selectedIds = new Set(entered ? [entered] : [])
   }
 
   function setMarquee(rect: Rect | null) {
@@ -2261,7 +2286,7 @@ export function createEditorStore() {
     const entries: Array<{ id: string; parentId: string; snapshot: SceneNode; index: number }> = []
     for (const id of state.selectedIds) {
       const node = graph.getNode(id)
-      if (!node) continue
+      if (!node || node.locked) continue
       const parentId = node.parentId ?? state.currentPageId
       const parent = graph.getNode(parentId)
       const index = parent?.childIds.indexOf(id) ?? -1
@@ -2450,10 +2475,12 @@ export function createEditorStore() {
 
   function undoAction() {
     undo.undo()
+    validateEnteredContainer()
   }
 
   function redoAction() {
     undo.redo()
+    validateEnteredContainer()
     requestRender()
   }
 
@@ -2573,6 +2600,9 @@ export function createEditorStore() {
     setTool,
     select,
     clearSelection,
+    enterContainer,
+    exitContainer,
+    validateEnteredContainer,
     selectAll,
     setMarquee,
     setSnapGuides,
