@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { ListboxFilter } from 'reka-ui'
+
+// oxlint-disable-next-line typescript-eslint(consistent-type-imports) — ListboxFilter used in template as component
 import {
   ListboxContent,
+  ListboxFilter,
   ListboxItem,
   ListboxRoot,
   ListboxVirtualizer,
