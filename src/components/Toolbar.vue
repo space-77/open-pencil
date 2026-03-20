@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal
 } from 'reka-ui'
-import { useBreakpoints } from '@vueuse/core'
+import { useBreakpoints, useEventListener } from '@vueuse/core'
 import { AnimatePresence, motion } from 'motion-v'
 
 import IconChevronDown from '~icons/lucide/chevron-down'
@@ -131,6 +131,25 @@ function goNext() {
   slideDirection.value = 1
   mobileCategory.value++
 }
+
+const previousTool = ref<Tool | null>(null)
+
+function handleSpaceKeyDown(e: KeyboardEvent) {
+  if (e.code === 'Space' && !e.repeat && store.state.activeTool !== 'HAND') {
+    previousTool.value = store.state.activeTool
+    store.setTool('HAND')
+  }
+}
+
+function handleSpaceKeyUp(e: KeyboardEvent) {
+  if (e.code === 'Space' && previousTool.value !== null) {
+    store.setTool(previousTool.value)
+    previousTool.value = null
+  }
+}
+
+useEventListener(window, 'keydown', handleSpaceKeyDown)
+useEventListener(window, 'keyup', handleSpaceKeyUp)
 </script>
 
 <template>
