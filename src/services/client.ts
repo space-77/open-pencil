@@ -1,19 +1,20 @@
-import qs from "qs";
-import type { IApiClient, DocReqConfig } from "doc2ts";
+import qs from 'qs'
+
+import type { IApiClient, DocReqConfig } from 'doc2ts'
 
 export default class ApiClient implements IApiClient {
   request<T = any>(config: DocReqConfig): Promise<T> {
     // TODO 需自行实现请求逻辑
-    return Promise.reject("需自行实现请求逻辑");
+    return Promise.reject('需自行实现请求逻辑')
   }
 
   async download<T = Blob>(config: DocReqConfig): Promise<T> {
     try {
-      const blob = await this.request(config);
+      const blob = await this.request(config)
       // TODO 需自行实现文件下载方法逻辑
-      return Promise.reject("需自行实现请求逻辑");
+      return Promise.reject('需自行实现请求逻辑')
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(error)
     }
   }
 
@@ -21,38 +22,38 @@ export default class ApiClient implements IApiClient {
    * @description 拼接参数
    */
   protected serialize(query: Record<string, any>) {
-    return qs.stringify(query, { skipNulls: true });
+    return qs.stringify(query, { skipNulls: true })
   }
 
   /**
    * @description 创建 formdata
    */
   protected formData(formData: Record<string, any>, type: string) {
-    if (!(formData instanceof Object) || Array.isArray(formData)) return;
-    const dataList = Object.entries(formData);
+    if (!(formData instanceof Object) || Array.isArray(formData)) return
+    const dataList = Object.entries(formData)
 
-    if (type.startsWith("multipart/form-data")) {
-      const fd = new FormData();
+    if (type.startsWith('multipart/form-data')) {
+      const fd = new FormData()
       dataList.forEach(([k, v]) => {
-        if (v === undefined) return;
+        if (v === undefined) return
         if (Array.isArray(v)) {
-          v.forEach((item: any) => fd.append(k, item));
+          v.forEach((item: any) => fd.append(k, item))
         } else {
-          fd.append(k, v);
+          fd.append(k, v)
         }
-      });
-      return fd;
-    } else if (type.startsWith("application/x-www-form-urlencoded")) {
-      const fd = new URLSearchParams();
+      })
+      return fd
+    } else if (type.startsWith('application/x-www-form-urlencoded')) {
+      const fd = new URLSearchParams()
       dataList.forEach(([k, v]) => {
-        if (v === undefined) return;
+        if (v === undefined) return
         if (Array.isArray(v)) {
-          v.forEach((item: any) => fd.set(k, item));
+          v.forEach((item: any) => fd.set(k, item))
         } else {
-          fd.set(k, v);
+          fd.set(k, v)
         }
-      });
-      return fd;
+      })
+      return fd
     }
   }
 }

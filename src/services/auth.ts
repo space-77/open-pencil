@@ -7,9 +7,10 @@
  * ---------------------------------------------------------------
  */
 
-import type { DocReqConfig } from "doc2ts";
-import ApiClient from "./client";
-import type { Auth as types, __common__ } from "./types";
+import ApiClient from './client'
+
+import type { Auth as types, __common__ } from './types'
+import type { DocReqConfig } from 'doc2ts'
 /**
  * @name Auth
  * @description Auth
@@ -20,8 +21,8 @@ export default class Auth extends ApiClient {
    * @description 用户登录获取认证令牌
    */
   postLogin(body: __common__.InternalhandlerLoginRequest) {
-    const config: DocReqConfig = { url: "/auth/login", body, method: "post" };
-    return this.request<types.RPostLogin>(config);
+    const config: DocReqConfig = { url: '/auth/login', body, method: 'post' }
+    return this.request<types.RPostLogin>(config)
   }
 
   /**
@@ -30,11 +31,11 @@ export default class Auth extends ApiClient {
    */
   postRegister(body: __common__.InternalhandlerRegisterRequest) {
     const config: DocReqConfig = {
-      url: "/auth/register",
+      url: '/auth/register',
       body,
-      method: "post",
-    };
-    return this.request<types.RPostRegister>(config);
+      method: 'post'
+    }
+    return this.request<types.RPostRegister>(config)
   }
 }
-export const auth = new Auth();
+export const auth = new Auth()

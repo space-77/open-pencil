@@ -7,9 +7,10 @@
  * ---------------------------------------------------------------
  */
 
-import type { DocReqConfig } from "doc2ts";
-import ApiClient from "./client";
-import type { Collaboration as types, __common__ } from "./types";
+import ApiClient from './client'
+
+import type { Collaboration as types, __common__ } from './types'
+import type { DocReqConfig } from 'doc2ts'
 /**
  * @name Collaboration
  * @description Collaboration
@@ -20,8 +21,8 @@ export default class Collaboration extends ApiClient {
    * @description 创建一个新的协作房间，用于多人实时协作编辑
    */
   postRooms(body: __common__.InternalhandlerCreateRoomRequest) {
-    const config: DocReqConfig = { url: "/collab/rooms", body, method: "post" };
-    return this.request<types.RPostRooms>(config);
+    const config: DocReqConfig = { url: '/collab/rooms', body, method: 'post' }
+    return this.request<types.RPostRooms>(config)
   }
 
   /**
@@ -29,8 +30,8 @@ export default class Collaboration extends ApiClient {
    * @description 获取当前用户创建或参与的所有活跃协作房间
    */
   getRoomsMy() {
-    const config: DocReqConfig = { url: "/collab/rooms/my", method: "get" };
-    return this.request<types.RGetRoomsMy>(config);
+    const config: DocReqConfig = { url: '/collab/rooms/my', method: 'get' }
+    return this.request<types.RGetRoomsMy>(config)
   }
 
   /**
@@ -39,8 +40,8 @@ export default class Collaboration extends ApiClient {
    * @description 获取指定协作房间的详细信息
    */
   getRoomsById(id: string) {
-    const config: DocReqConfig = { url: `/collab/rooms/${id}`, method: "get" };
-    return this.request<types.RGetRoomsById>(config);
+    const config: DocReqConfig = { url: `/collab/rooms/${id}`, method: 'get' }
+    return this.request<types.RGetRoomsById>(config)
   }
 
   /**
@@ -49,9 +50,9 @@ export default class Collaboration extends ApiClient {
    * @description 获取协作房间的 Yjs 文档状态，用于断线重连后同步
    */
   getRoomsByIdState(id: string) {
-    const url = `/collab/rooms/${id}/state`;
-    const config: DocReqConfig = { url, method: "get" };
-    return this.request<types.RGetRoomsByIdState>(config);
+    const url = `/collab/rooms/${id}/state`
+    const config: DocReqConfig = { url, method: 'get' }
+    return this.request<types.RGetRoomsByIdState>(config)
   }
 
   /**
@@ -59,10 +60,10 @@ export default class Collaboration extends ApiClient {
    * @description 更新协作房间的 Yjs 文档状态
    */
   putRoomsByIdState(params: types.PutRoomsByIdStateParams1) {
-    const { id, ...body } = params;
-    const url = `/collab/rooms/${id}/state`;
-    const config: DocReqConfig = { url, body, method: "put" };
-    return this.request<types.RPutRoomsByIdState>(config);
+    const { id, ...body } = params
+    const url = `/collab/rooms/${id}/state`
+    const config: DocReqConfig = { url, body, method: 'put' }
+    return this.request<types.RPutRoomsByIdState>(config)
   }
 
   /**
@@ -71,9 +72,9 @@ export default class Collaboration extends ApiClient {
    * @description 关闭指定的协作房间，房间将不再可用
    */
   postRoomsByIdClose(id: string) {
-    const url = `/collab/rooms/${id}/close`;
-    const config: DocReqConfig = { url, method: "post" };
-    return this.request<types.RPostRoomsByIdClose>(config);
+    const url = `/collab/rooms/${id}/close`
+    const config: DocReqConfig = { url, method: 'post' }
+    return this.request<types.RPostRoomsByIdClose>(config)
   }
 }
-export const collaboration = new Collaboration();
+export const collaboration = new Collaboration()
