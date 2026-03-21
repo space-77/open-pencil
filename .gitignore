@@ -39,3 +39,6 @@ packages/core/vendor/canvaskit-webgpu/
 patches/skia-webgpu/
 .wrangler/
 components.d.ts
+packages/server/.vscode/launch.json
+packages/server/bin/server
+packages/server/cmd/server/__debug_bin*
